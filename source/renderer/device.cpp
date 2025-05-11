@@ -2,35 +2,36 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
+#include "window/window.h"
 #include "renderer/device.h"
 
 using Microsoft::WRL::ComPtr;
 
-static HWND g_hwnd = nullptr;
-static ComPtr<ID3D11Device> g_device;
-static ComPtr<ID3D11DeviceContext> g_context;
-static ComPtr<IDXGISwapChain1> g_swapChain; 
-static ComPtr<ID3D11RenderTargetView> g_renderTargetView;
-static ComPtr<IDXGIFactory6> g_factory;
-static ComPtr<IDXGIOutput> g_baseOutput;
-
-bool ashenvale::renderer::initialize(HWND hwnd)
+bool ashenvale::renderer::initialize()
 {
-    g_hwnd = hwnd;
-
     HRESULT result;
-    ComPtr<IDXGIAdapter1> adapter;
-    ComPtr<IDXGIOutput6> adapterOutput;
+    ComPtr<ID3D11Device> tempDevice;
+    ComPtr<ID3D11DeviceContext> tempContext;
 
-    result = CreateDXGIFactory2(0, IID_PPV_ARGS(&g_factory));
+    result = CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&g_factory));
     if (FAILED(result))
         return false;
 
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
 
     result = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_DEBUG, &featureLevel, 1,
-        D3D11_SDK_VERSION, &g_device, nullptr, &g_context);
+        D3D11_SDK_VERSION, &tempDevice, nullptr, &tempContext);
 
+    result = tempDevice.As(&g_device);
+    if (FAILED(result)) {
+        return false;
+    }
+    result = tempContext.As(&g_context);
+    if (FAILED(result)) {
+        return false;
+    }
+
+    ComPtr<IDXGIAdapter1> adapter;
     result = g_factory->EnumAdapterByGpuPreference(
         0,
         DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
@@ -39,16 +40,21 @@ bool ashenvale::renderer::initialize(HWND hwnd)
     if (FAILED(result))
         return false;
 
-    result = adapter->EnumOutputs(0, &g_baseOutput);
+    ComPtr<IDXGIOutput> adapterOutput;
+    result = adapter->EnumOutputs(0, &adapterOutput);
     if (FAILED(result))
         return false;
 
-    g_baseOutput.As(&adapterOutput);
+    result = adapterOutput.As(&g_baseOutput);
+
+    if (FAILED(result)) {
+        return false;
+    }
 
     DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
     UINT numModes = 0;
-    result = adapterOutput->GetDisplayModeList1(
+    result = g_baseOutput->GetDisplayModeList1(
         format,
         0,
         &numModes,
@@ -58,7 +64,7 @@ bool ashenvale::renderer::initialize(HWND hwnd)
         return false;
 
     DXGI_MODE_DESC1* displayModeList = new DXGI_MODE_DESC1[numModes];
-    result = adapterOutput->GetDisplayModeList1(
+    result = g_baseOutput->GetDisplayModeList1(
         format,
         0,
         &numModes,
@@ -75,6 +81,10 @@ bool ashenvale::renderer::initialize(HWND hwnd)
             break;
         }
     }
+    if (numerator == 0 || denominator == 0) {
+        numerator = 60;
+        denominator = 1;
+    }
 
     delete[] displayModeList;
 
@@ -89,17 +99,19 @@ bool ashenvale::renderer::initialize(HWND hwnd)
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.Flags = 0;
 
-    ComPtr<IDXGIAdapter> dxgiAdapter;
-    g_device.As(&dxgiAdapter);
-    ComPtr<IDXGISwapChain1> swapChain1;
+
+    ComPtr<IDXGISwapChain1> tempSwapChain;
     result = g_factory->CreateSwapChainForHwnd(
-        g_device.Get(), hwnd, &swapChainDesc, nullptr, nullptr, &swapChain1
+        g_device.Get(), ashenvale::window::g_hwnd, &swapChainDesc, nullptr, nullptr, &tempSwapChain
     );
-    if (FAILED(result))
+    if (FAILED(result)) {
         return false;
+    }
 
-
-    g_swapChain = swapChain1;
+    result = tempSwapChain.As(&g_swapChain);
+    if (FAILED(result)) {
+        return false;
+    }
 
     ComPtr<ID3D11Texture2D> backBuffer;
     result = g_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
@@ -107,12 +119,15 @@ bool ashenvale::renderer::initialize(HWND hwnd)
         return false;
     }
 
-    result = g_device->CreateRenderTargetView(backBuffer.Get(), nullptr, &g_renderTargetView);
+    result = g_device->CreateRenderTargetView1(backBuffer.Get(), nullptr, &g_renderTargetView);
     if (FAILED(result)) {
         return false;
     }
 
-    g_context->OMSetRenderTargets(1, g_renderTargetView.GetAddressOf(), nullptr);
+
+    ComPtr<ID3D11RenderTargetView> baseRTV;
+    g_renderTargetView.As(&baseRTV);
+    g_context->OMSetRenderTargets(1, baseRTV.GetAddressOf(), nullptr);
 
     D3D11_VIEWPORT viewport = {};
     viewport.Width = static_cast<float>(swapChainDesc.Width);
