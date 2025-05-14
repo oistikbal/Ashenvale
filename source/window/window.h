@@ -1,3 +1,5 @@
+#pragma once
+
 #include <wtypes.h>
 
 namespace ashenvale::window

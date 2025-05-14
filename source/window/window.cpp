@@ -38,7 +38,7 @@ void ashenvale::window::run()
             DispatchMessage(&msg);
         }
 
-        ashenvale::renderer::render();
+        ashenvale::renderer::device::render();
     }
 }
 

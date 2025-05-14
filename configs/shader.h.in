@@ -1,0 +1,8 @@
+#warning "This file is auto-generated from shader.h.in. Do not edit directly."
+
+#pragma once
+
+namespace ashenvale::renderer::config 
+{
+    constexpr const wchar_t* SHADER_PATH  = L"@SHADER_PATH@";
+}

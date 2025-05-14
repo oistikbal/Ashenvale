@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Windows.h>
 #include <wrl/client.h>
 #include <d3d11_4.h>
@@ -5,7 +7,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-namespace ashenvale::renderer
+namespace ashenvale::renderer::device
 {
 	inline ComPtr<ID3D11Device4> g_device = nullptr;
 	inline ComPtr<ID3D11DeviceContext4> g_context = nullptr;;
@@ -16,7 +18,7 @@ namespace ashenvale::renderer
 	inline ComPtr<IDXGIOutput6> g_baseOutput = nullptr;;
 }
 
-namespace ashenvale::renderer
+namespace ashenvale::renderer::device
 {
 	bool initialize();
 	void render();

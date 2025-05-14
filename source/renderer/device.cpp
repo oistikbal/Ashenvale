@@ -4,10 +4,11 @@
 
 #include "window/window.h"
 #include "renderer/device.h"
+#include "renderer/shader_compiler.h"
 
 using Microsoft::WRL::ComPtr;
 
-bool ashenvale::renderer::initialize()
+bool ashenvale::renderer::device::initialize()
 {
     HRESULT result;
     ComPtr<ID3D11Device> tempDevice;
@@ -139,10 +140,37 @@ bool ashenvale::renderer::initialize()
 
     g_context->RSSetViewports(1, &viewport);
 
+    ComPtr<ID3DBlob> sBlob;
+    ComPtr<ID3DBlob> eBlob;
+
+    HRESULT hr = renderer::shader_compiler::compile(L"vs.hlsl", "main", "vs_5_0", nullptr, sBlob.GetAddressOf(), eBlob.GetAddressOf());
+    if (SUCCEEDED(hr)) {
+        OutputDebugString("Shader compiled successfully.\n");
+    }
+    else {
+        OutputDebugString("Shader compilation failed: HRESULT = 0x");
+        char hrStr[16];
+        OutputDebugString(hrStr);
+        OutputDebugString("\n");
+        if (eBlob) {
+            const char* errorMsg = static_cast<const char*>(eBlob->GetBufferPointer());
+            size_t bufferSize = eBlob->GetBufferSize();
+            if (bufferSize > 0 && errorMsg[bufferSize - 1] == '\0') {
+                OutputDebugString(errorMsg);
+            }
+            else {
+                OutputDebugString("Error blob is empty or not null-terminated.\n");
+            }
+            OutputDebugString("\n");
+        }
+    }
+
+
+
     return true;
 }
 
-void ashenvale::renderer::render()
+void ashenvale::renderer::device::render()
 {
     const float color[4] = { 0.3f, 0.8f, 0.7f, 1.0f };
     g_context->ClearRenderTargetView(g_renderTargetView.Get(), color);
@@ -150,7 +178,7 @@ void ashenvale::renderer::render()
     g_swapChain->Present(1, 0);
 }
 
-void ashenvale::renderer::shutdown()
+void ashenvale::renderer::device::shutdown()
 {
     g_renderTargetView.Reset();
     g_context.Reset();
