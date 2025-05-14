@@ -5,6 +5,7 @@
 #include "window/window.h"
 #include "renderer/device.h"
 #include "renderer/shader_compiler.h"
+#include <stdio.h>
 
 using Microsoft::WRL::ComPtr;
 
@@ -139,33 +140,6 @@ bool ashenvale::renderer::device::initialize()
     viewport.TopLeftY = 0.0f;
 
     g_context->RSSetViewports(1, &viewport);
-
-    ComPtr<ID3DBlob> sBlob;
-    ComPtr<ID3DBlob> eBlob;
-
-    HRESULT hr = renderer::shader_compiler::compile(L"vs.hlsl", "main", "vs_5_0", nullptr, sBlob.GetAddressOf(), eBlob.GetAddressOf());
-    if (SUCCEEDED(hr)) {
-        OutputDebugString("Shader compiled successfully.\n");
-    }
-    else {
-        OutputDebugString("Shader compilation failed: HRESULT = 0x");
-        char hrStr[16];
-        OutputDebugString(hrStr);
-        OutputDebugString("\n");
-        if (eBlob) {
-            const char* errorMsg = static_cast<const char*>(eBlob->GetBufferPointer());
-            size_t bufferSize = eBlob->GetBufferSize();
-            if (bufferSize > 0 && errorMsg[bufferSize - 1] == '\0') {
-                OutputDebugString(errorMsg);
-            }
-            else {
-                OutputDebugString("Error blob is empty or not null-terminated.\n");
-            }
-            OutputDebugString("\n");
-        }
-    }
-
-
 
     return true;
 }

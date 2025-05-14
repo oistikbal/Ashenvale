@@ -7,12 +7,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         return -1;
     }
 
-    if (!ashenvale::renderer::initialize()) {
+    if (!ashenvale::renderer::device::initialize()) {
         return -1;
     }
 
     ashenvale::window::run();
-    ashenvale::renderer::shutdown();
+    ashenvale::renderer::device::shutdown();
 
     return 0;
 }

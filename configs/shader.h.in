@@ -1,4 +1,10 @@
-#warning "This file is auto-generated from shader.h.in. Do not edit directly."
+/*
+ * ----------------------------------------------------------------------------
+ * THIS FILE IS AUTO-GENERATED – DO NOT EDIT MANUALLY
+ * Generated from: shader.h.in
+ * By: CMake during build configuration
+ * ----------------------------------------------------------------------------
+ */
 
 #pragma once
 
