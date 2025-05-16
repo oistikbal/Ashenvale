@@ -1,13 +1,25 @@
 #include <d3d11_4.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
+#include <DirectXMath.h>
+#include <stdio.h>
 
 #include "window/window.h"
 #include "renderer/device.h"
 #include "renderer/shader_compiler.h"
-#include <stdio.h>
 
 using Microsoft::WRL::ComPtr;
+
+static ComPtr<ID3D11Buffer> g_vertexBuffer;
+static ComPtr<ID3D11Buffer> g_indexBuffer;
+static ComPtr<ID3D11VertexShader> g_vertexShader;
+static ComPtr<ID3D11PixelShader> g_pixelShader;
+static ComPtr<ID3D11InputLayout> g_inputLayout;
+
+struct Vertex {
+    DirectX::XMFLOAT3 position;
+    DirectX::XMFLOAT4 color;
+};
 
 bool ashenvale::renderer::device::initialize()
 {
@@ -141,14 +153,108 @@ bool ashenvale::renderer::device::initialize()
 
     g_context->RSSetViewports(1, &viewport);
 
+
+    Vertex triangleVertices[] = {
+        { {  0.0f,  0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top (Red)
+        { {  0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Right (Green)
+        { { -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }   // Left (Blue)
+    };
+
+    D3D11_BUFFER_DESC vertexBufferDesc = {};
+    vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+    vertexBufferDesc.ByteWidth = sizeof(triangleVertices);
+    vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    vertexBufferDesc.CPUAccessFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA vertexData = {};
+    vertexData.pSysMem = triangleVertices;
+
+    result = g_device->CreateBuffer(&vertexBufferDesc, &vertexData, &g_vertexBuffer);
+    if (FAILED(result)) {
+        return false;
+    }
+
+    uint16_t indices[] = { 0, 1, 2 };
+
+    D3D11_BUFFER_DESC indexBufferDesc = {};
+    indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+    indexBufferDesc.ByteWidth = sizeof(indices);
+    indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    indexBufferDesc.CPUAccessFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA indexData = {};
+    indexData.pSysMem = indices;
+
+    result = g_device->CreateBuffer(&indexBufferDesc, &indexData, &g_indexBuffer);
+    if (FAILED(result)) {
+        return false;
+    }
+
+    UINT stride = sizeof(Vertex);
+    UINT offset = 0;
+    g_context->IASetVertexBuffers(0, 1, g_vertexBuffer.GetAddressOf(), &stride, &offset);
+
+    g_context->IASetIndexBuffer(g_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+
+    g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    ComPtr<ID3DBlob> errorBlob;
+    ComPtr<ID3DBlob> vsBlob;
+    ComPtr<ID3DBlob> psBlob;
+
+    result = renderer::shader_compiler::compile(L"vs.hlsl", "main", "vs_5_0", nullptr, vsBlob.GetAddressOf(), errorBlob.GetAddressOf());
+
+    if (FAILED(result)) {
+        return false;
+    }
+
+    g_device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &g_vertexShader);
+
+    g_context->VSSetShader(g_vertexShader.Get(), nullptr, 0);
+
+    result = renderer::shader_compiler::compile(L"ps.hlsl", "main", "ps_5_0", nullptr, psBlob.GetAddressOf(), errorBlob.GetAddressOf());
+
+    if (FAILED(result)) {
+        return false;
+    }
+
+    g_device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &g_pixelShader);
+
+    g_context->PSSetShader(g_pixelShader.Get(), nullptr, 0);
+
+    ComPtr<ID3D11ShaderReflection> reflection;
+    D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), IID_PPV_ARGS(&reflection));
+
+    auto layouts = renderer::shader_compiler::get_input_layout(reflection.Get());
+
+    g_device->CreateInputLayout(layouts.data(), layouts.size(), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), g_inputLayout.GetAddressOf());
+    g_context->IASetInputLayout(g_inputLayout.Get());
+
     return true;
 }
 
 void ashenvale::renderer::device::render()
 {
-    const float color[4] = { 0.3f, 0.8f, 0.7f, 1.0f };
+    static ComPtr<ID3D11RenderTargetView> rtv;
+    renderer::device::g_renderTargetView.As(&rtv);
+
+    g_context->OMSetRenderTargets(1, rtv.GetAddressOf(), nullptr);
+
+    const float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     g_context->ClearRenderTargetView(g_renderTargetView.Get(), color);
 
+    UINT stride = sizeof(Vertex);
+    UINT offset = 0;
+
+    g_context->IASetVertexBuffers(0, 1, g_vertexBuffer.GetAddressOf(), &stride, &offset);
+    g_context->IASetIndexBuffer(g_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+    g_context->IASetInputLayout(g_inputLayout.Get());
+
+    g_context->VSSetShader(g_vertexShader.Get(), nullptr, 0);
+    g_context->PSSetShader(g_pixelShader.Get(), nullptr, 0);
+    g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    g_context->DrawIndexed(3, 0, 0);
     g_swapChain->Present(1, 0);
 }
 
