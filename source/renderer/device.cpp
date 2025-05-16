@@ -17,6 +17,8 @@ static ComPtr<ID3D11PixelShader> g_pixelShader;
 static ComPtr<ID3D11InputLayout> g_inputLayout;
 static ComPtr<ID3D11Texture2D> g_depthStencilBuffer;
 static ComPtr<ID3D11DepthStencilView> g_depthStencilView;
+static ComPtr<ID3D11RasterizerState> g_rasterState;
+ComPtr<ID3D11DepthStencilState> g_depthState;
 
 struct Vertex {
     DirectX::XMFLOAT3 position;
@@ -196,8 +198,8 @@ bool ashenvale::renderer::device::initialize()
     depthDesc.Height = 720;
     depthDesc.MipLevels = 1;
     depthDesc.ArraySize = 1;
-    depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; // 24 bit depth + 8 bit stencil
-    depthDesc.SampleDesc.Count = 1;                   // MSAA yoksa 1
+    depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    depthDesc.SampleDesc.Count = 1;
     depthDesc.SampleDesc.Quality = 0;
     depthDesc.Usage = D3D11_USAGE_DEFAULT;
     depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
@@ -217,6 +219,22 @@ bool ashenvale::renderer::device::initialize()
     if (FAILED(result)) {
         return false;
     }
+
+    D3D11_RASTERIZER_DESC rasterDesc = {};
+    rasterDesc.FillMode = D3D11_FILL_SOLID;
+    rasterDesc.CullMode = D3D11_CULL_BACK;
+    rasterDesc.FrontCounterClockwise = FALSE;
+
+    g_device->CreateRasterizerState(&rasterDesc, g_rasterState.GetAddressOf());
+    g_context->RSSetState(g_rasterState.Get());
+
+    D3D11_DEPTH_STENCIL_DESC dsDesc = {};
+    dsDesc.DepthEnable = TRUE;
+    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+
+    g_device->CreateDepthStencilState(&dsDesc, g_depthState.GetAddressOf());
+    g_context->OMSetDepthStencilState(g_depthState.Get(), 1);
 
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
@@ -296,4 +314,8 @@ void ashenvale::renderer::device::shutdown()
     g_device.Reset();
     g_factory.Reset();
     g_baseOutput.Reset();
+    g_depthStencilView.Reset();
+    g_depthStencilBuffer.Reset();
+    g_vertexBuffer.Reset();
+    g_pixelShader.Reset();
 }
