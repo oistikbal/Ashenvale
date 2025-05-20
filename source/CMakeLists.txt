@@ -7,8 +7,6 @@ file(GLOB_RECURSE ASHENVALE_CONFIGURES "${CMAKE_SOURCE_DIR}/*.h.in")
 file(GLOB_RECURSE ASHENVALE_SHADERS "${CMAKE_SOURCE_DIR}/shaders/*.hlsl")
 
 set_source_files_properties(${ASHENVALE_SHADERS} PROPERTIES VS_TOOL_OVERRIDE "text")
-set(SHADER_DIR_DEBUG "${CMAKE_SOURCE_DIR}/shaders")
-
 
 set(SHADER_DIR_DEBUG "${CMAKE_SOURCE_DIR}/shaders")
 set(SHADER_DIR_RELEASE "/shaders")
@@ -60,10 +58,17 @@ source_group(
 
 target_include_directories(Ashenvale PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(Ashenvale PRIVATE "${CMAKE_BINARY_DIR}/generated")
+target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/WinPixEventRuntime/Include")
 
 set_target_properties(Ashenvale PROPERTIES CXX_STANDARD 20)
 set_target_properties(Ashenvale PROPERTIES CXX_STANDARD_REQUIRED True)
 
 if(WIN32)
-    target_link_libraries(Ashenvale d3d11 dxguid dxgi d3dcompiler) 
+    target_link_libraries(Ashenvale d3d11 dxguid dxgi d3dcompiler "${CMAKE_SOURCE_DIR}/thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.lib") 
 endif()
+
+add_custom_command(TARGET Ashenvale POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll"
+        $<TARGET_FILE_DIR:Ashenvale>
+)

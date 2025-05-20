@@ -2,11 +2,13 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <DirectXMath.h>
-#include <stdio.h>
 
 #include "window/window.h"
 #include "renderer/device.h"
 #include "renderer/shader_compiler.h"
+#include "profiler/profiler.h"
+
+
 
 using Microsoft::WRL::ComPtr;
 
@@ -18,7 +20,7 @@ static ComPtr<ID3D11InputLayout> g_inputLayout;
 static ComPtr<ID3D11Texture2D> g_depthStencilBuffer;
 static ComPtr<ID3D11DepthStencilView> g_depthStencilView;
 static ComPtr<ID3D11RasterizerState> g_rasterState;
-ComPtr<ID3D11DepthStencilState> g_depthState;
+static ComPtr<ID3D11DepthStencilState> g_depthState;
 
 struct Vertex {
     DirectX::XMFLOAT3 position;
@@ -203,7 +205,7 @@ bool ashenvale::renderer::device::initialize()
     depthDesc.SampleDesc.Quality = 0;
     depthDesc.Usage = D3D11_USAGE_DEFAULT;
     depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-    
+
 
     g_device->CreateTexture2D(&depthDesc, nullptr, g_depthStencilBuffer.GetAddressOf());
     if (FAILED(result)) {
@@ -281,6 +283,7 @@ bool ashenvale::renderer::device::initialize()
 
 void ashenvale::renderer::device::render()
 {
+    PIXBeginEvent(0, "renderer.render");
     static ComPtr<ID3D11RenderTargetView> rtv;
     renderer::device::g_renderTargetView.As(&rtv);
 
@@ -304,6 +307,7 @@ void ashenvale::renderer::device::render()
 
     g_context->DrawIndexed(3, 0, 0);
     g_swapChain->Present(1, 0);
+    PIXEndEvent();
 }
 
 void ashenvale::renderer::device::shutdown()

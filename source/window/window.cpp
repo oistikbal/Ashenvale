@@ -1,5 +1,6 @@
 #include "window/window.h"
 #include "renderer/device.h"
+#include "profiler/profiler.h"
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -32,6 +33,7 @@ void ashenvale::window::run()
     MSG msg = {};
     while (msg.message != WM_QUIT)
     {
+        PIXBeginEvent(0, "window.run");
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&msg);
@@ -39,11 +41,14 @@ void ashenvale::window::run()
         }
 
         ashenvale::renderer::device::render();
+        PIXEndEvent();
     }
 }
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    PIXBeginEvent(0, "window.proc");
+
     switch (uMsg)
     {
     case WM_DESTROY:
@@ -51,4 +56,5 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         return 0;
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    PIXEndEvent();
 }
