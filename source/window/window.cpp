@@ -1,12 +1,7 @@
-#include <imgui/imgui.h>
-#include <imgui/backends/imgui_impl_win32.h>
-#include <imgui/backends/imgui_impl_win32.cpp>
-
 #include "window/window.h"
 #include "renderer/device.h"
 #include "profiler/profiler.h"
-
-
+#include "editor/editor.h"
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -54,14 +49,13 @@ void ashenvale::window::run()
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+    if (ashenvale::editor::wind_proc(hwnd, uMsg, wParam, lParam))
         return true;
 
     switch (uMsg)
     {
     case WM_DESTROY:
         PostQuitMessage(0);
-        PIXEndEvent();
         return 0;
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
