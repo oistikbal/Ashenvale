@@ -1,11 +1,18 @@
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_win32.h>
+#include <imgui/backends/imgui_impl_win32.cpp>
+
 #include "window/window.h"
 #include "renderer/device.h"
 #include "profiler/profiler.h"
+
+
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 bool ashenvale::window::initialize(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
+    PIXBeginEvent(0, "window.initialize");
     WNDCLASS wc = {};
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = GetModuleHandle(nullptr);
@@ -24,7 +31,7 @@ bool ashenvale::window::initialize(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     ShowWindow(g_hwnd, nCmdShow);
     UpdateWindow(g_hwnd);
-
+    PIXEndEvent();
     return true;
 }
 
@@ -47,14 +54,15 @@ void ashenvale::window::run()
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    PIXBeginEvent(0, "window.proc");
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+        return true;
 
     switch (uMsg)
     {
     case WM_DESTROY:
         PostQuitMessage(0);
+        PIXEndEvent();
         return 0;
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    PIXEndEvent();
 }

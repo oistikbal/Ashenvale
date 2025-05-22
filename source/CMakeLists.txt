@@ -56,15 +56,33 @@ source_group(
     FILES ${ASHENVALE_GENERATEDS}
 )
 
+add_library(ImGui STATIC 
+    "${CMAKE_SOURCE_DIR}/thirdparty/imgui/imgui.cpp"
+    "${CMAKE_SOURCE_DIR}/thirdparty/imgui/imgui_draw.cpp"
+    "${CMAKE_SOURCE_DIR}/thirdparty/imgui/imgui_tables.cpp"
+    "${CMAKE_SOURCE_DIR}/thirdparty/imgui/imgui_widgets.cpp"
+    "${CMAKE_SOURCE_DIR}/thirdparty/imgui/backends/imgui_impl_win32.cpp"
+    "${CMAKE_SOURCE_DIR}/thirdparty/imgui/backends/imgui_impl_dx11.cpp"
+)
+
+target_include_directories(ImGui PRIVATE 
+"${CMAKE_SOURCE_DIR}/thirdparty/imgui/backends"
+"${CMAKE_SOURCE_DIR}/thirdparty/imgui"
+)
+
+
 target_include_directories(Ashenvale PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(Ashenvale PRIVATE "${CMAKE_BINARY_DIR}/generated")
 target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/WinPixEventRuntime/Include")
+target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/imgui")
+target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/")
+
 
 set_target_properties(Ashenvale PROPERTIES CXX_STANDARD 20)
 set_target_properties(Ashenvale PROPERTIES CXX_STANDARD_REQUIRED True)
 
 if(WIN32)
-    target_link_libraries(Ashenvale d3d11 dxguid dxgi d3dcompiler "${CMAKE_SOURCE_DIR}/thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.lib") 
+    target_link_libraries(Ashenvale d3d11 dxguid dxgi d3dcompiler ImGui "${CMAKE_SOURCE_DIR}/thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.lib") 
 endif()
 
 add_custom_command(TARGET Ashenvale POST_BUILD

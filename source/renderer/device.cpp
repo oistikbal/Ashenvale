@@ -7,6 +7,7 @@
 #include "renderer/device.h"
 #include "renderer/shader_compiler.h"
 #include "profiler/profiler.h"
+#include "editor/editor.h"
 
 
 
@@ -29,6 +30,7 @@ struct Vertex {
 
 bool ashenvale::renderer::device::initialize()
 {
+    PIXBeginEvent(0, "renderer.initialize");
     HRESULT result;
     ComPtr<ID3D11Device> tempDevice;
     ComPtr<ID3D11DeviceContext> tempContext;
@@ -278,6 +280,7 @@ bool ashenvale::renderer::device::initialize()
     g_device->CreateInputLayout(layouts.data(), layouts.size(), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), g_inputLayout.GetAddressOf());
     g_context->IASetInputLayout(g_inputLayout.Get());
 
+    PIXEndEvent();
     return true;
 }
 
@@ -304,14 +307,19 @@ void ashenvale::renderer::device::render()
     g_context->VSSetShader(g_vertexShader.Get(), nullptr, 0);
     g_context->PSSetShader(g_pixelShader.Get(), nullptr, 0);
     g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
     g_context->DrawIndexed(3, 0, 0);
+
+    ashenvale::editor::render();
+
     g_swapChain->Present(1, 0);
+
     PIXEndEvent();
 }
 
 void ashenvale::renderer::device::shutdown()
 {
+    PIXBeginEvent(0, "renderer.shutdown");
+
     g_renderTargetView.Reset();
     g_context.Reset();
     g_swapChain.Reset();
@@ -322,4 +330,6 @@ void ashenvale::renderer::device::shutdown()
     g_depthStencilBuffer.Reset();
     g_vertexBuffer.Reset();
     g_pixelShader.Reset();
+
+    PIXEndEvent();
 }

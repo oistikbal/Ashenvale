@@ -1,6 +1,7 @@
 #include "window/window.h"
 #include "renderer/device.h"
 #include "profiler/profiler.h"
+#include "editor/editor.h"
 
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
@@ -14,6 +15,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     if (!ashenvale::renderer::device::initialize()) {
         return -1;
     }
+
+    if (!ashenvale::editor::initialize()) {
+        return -1;
+    }
+
     ashenvale::window::run();
     ashenvale::renderer::device::shutdown();
 
