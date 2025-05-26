@@ -1,5 +1,6 @@
 #include "window/window.h"
 #include "renderer/device.h"
+#include "renderer/swapchain.h"
 #include "profiler/profiler.h"
 #include "editor/editor.h"
 
@@ -54,9 +55,14 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     switch (uMsg)
     {
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        return 0;
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+        case WM_SIZE:
+            int width = LOWORD(lParam);
+            int height = HIWORD(lParam);
+            ashenvale::renderer::swapchain::resize(width, height);
+            return 0;
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }

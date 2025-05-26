@@ -8,7 +8,7 @@
 #include "renderer/shader_compiler.h"
 #include "profiler/profiler.h"
 #include "editor/editor.h"
-
+#include "renderer/swapchain.h"
 
 
 using Microsoft::WRL::ComPtr;
@@ -18,10 +18,7 @@ static ComPtr<ID3D11Buffer> g_indexBuffer;
 static ComPtr<ID3D11VertexShader> g_vertexShader;
 static ComPtr<ID3D11PixelShader> g_pixelShader;
 static ComPtr<ID3D11InputLayout> g_inputLayout;
-static ComPtr<ID3D11Texture2D> g_depthStencilBuffer;
-static ComPtr<ID3D11DepthStencilView> g_depthStencilView;
-static ComPtr<ID3D11RasterizerState> g_rasterState;
-static ComPtr<ID3D11DepthStencilState> g_depthState;
+static D3D11_VIEWPORT g_viewportViewport;
 
 struct Vertex {
     DirectX::XMFLOAT3 position;
@@ -109,57 +106,13 @@ bool ashenvale::renderer::device::initialize()
         denominator = 1;
     }
 
-    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-    swapChainDesc.BufferCount = 2;
-    swapChainDesc.Width = 1280;
-    swapChainDesc.Height = 720;
-    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    swapChainDesc.SampleDesc.Count = 1;
-    swapChainDesc.SampleDesc.Quality = 0;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    swapChainDesc.Flags = 0;
+    RECT clientRect;
+    GetClientRect(window::g_hwnd, &clientRect);
 
+    int renderWidth = clientRect.right - clientRect.left;
+    int renderHeight = clientRect.bottom - clientRect.top;
 
-    ComPtr<IDXGISwapChain1> tempSwapChain;
-    result = g_factory->CreateSwapChainForHwnd(
-        g_device.Get(), ashenvale::window::g_hwnd, &swapChainDesc, nullptr, nullptr, &tempSwapChain
-    );
-    if (FAILED(result)) {
-        return false;
-    }
-
-    result = tempSwapChain.As(&g_swapChain);
-    if (FAILED(result)) {
-        return false;
-    }
-
-    ComPtr<ID3D11Texture2D> backBuffer;
-    result = g_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
-    if (FAILED(result)) {
-        return false;
-    }
-
-    result = g_device->CreateRenderTargetView1(backBuffer.Get(), nullptr, &g_renderTargetView);
-    if (FAILED(result)) {
-        return false;
-    }
-
-
-    ComPtr<ID3D11RenderTargetView> baseRTV;
-    g_renderTargetView.As(&baseRTV);
-    g_context->OMSetRenderTargets(1, baseRTV.GetAddressOf(), nullptr);
-
-    D3D11_VIEWPORT viewport = {};
-    viewport.Width = static_cast<float>(swapChainDesc.Width);
-    viewport.Height = static_cast<float>(swapChainDesc.Height);
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-    viewport.TopLeftX = 0.0f;
-    viewport.TopLeftY = 0.0f;
-
-    g_context->RSSetViewports(1, &viewport);
-
+    swapchain::create(renderWidth, renderHeight);
 
     Vertex triangleVertices[] = {
         { {  0.0f,  0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top (Red)
@@ -196,49 +149,6 @@ bool ashenvale::renderer::device::initialize()
     if (FAILED(result)) {
         return false;
     }
-
-    D3D11_TEXTURE2D_DESC depthDesc = {};
-    depthDesc.Width = 1280;
-    depthDesc.Height = 720;
-    depthDesc.MipLevels = 1;
-    depthDesc.ArraySize = 1;
-    depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    depthDesc.SampleDesc.Count = 1;
-    depthDesc.SampleDesc.Quality = 0;
-    depthDesc.Usage = D3D11_USAGE_DEFAULT;
-    depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-
-
-    g_device->CreateTexture2D(&depthDesc, nullptr, g_depthStencilBuffer.GetAddressOf());
-    if (FAILED(result)) {
-        return false;
-    }
-
-    D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-    dsvDesc.Format = depthDesc.Format;
-    dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-    dsvDesc.Texture2D.MipSlice = 0;
-
-    result = g_device->CreateDepthStencilView(g_depthStencilBuffer.Get(), &dsvDesc, g_depthStencilView.GetAddressOf());
-    if (FAILED(result)) {
-        return false;
-    }
-
-    D3D11_RASTERIZER_DESC rasterDesc = {};
-    rasterDesc.FillMode = D3D11_FILL_SOLID;
-    rasterDesc.CullMode = D3D11_CULL_BACK;
-    rasterDesc.FrontCounterClockwise = FALSE;
-
-    g_device->CreateRasterizerState(&rasterDesc, g_rasterState.GetAddressOf());
-    g_context->RSSetState(g_rasterState.Get());
-
-    D3D11_DEPTH_STENCIL_DESC dsDesc = {};
-    dsDesc.DepthEnable = TRUE;
-    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-    dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
-
-    g_device->CreateDepthStencilState(&dsDesc, g_depthState.GetAddressOf());
-    g_context->OMSetDepthStencilState(g_depthState.Get(), 1);
 
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
@@ -280,6 +190,8 @@ bool ashenvale::renderer::device::initialize()
     g_device->CreateInputLayout(layouts.data(), layouts.size(), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), g_inputLayout.GetAddressOf());
     g_context->IASetInputLayout(g_inputLayout.Get());
 
+    resize_viewport(renderWidth, renderHeight);
+
     PIXEndEvent();
     return true;
 }
@@ -287,15 +199,15 @@ bool ashenvale::renderer::device::initialize()
 void ashenvale::renderer::device::render()
 {
     PIXBeginEvent(0, "renderer.render");
-    static ComPtr<ID3D11RenderTargetView> rtv;
-    renderer::device::g_renderTargetView.As(&rtv);
-
-    g_context->OMSetRenderTargets(1, rtv.GetAddressOf(), g_depthStencilView.Get());
-    g_context->ClearDepthStencilView(g_depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-
-
     const float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    g_context->ClearRenderTargetView(g_renderTargetView.Get(), color);
+    g_context->OMSetRenderTargets(1, g_viewportRTV.GetAddressOf(), g_viewportDSV.Get());
+    g_context->OMSetDepthStencilState(g_viewportState.Get(), 1);
+
+    g_context->ClearRenderTargetView(g_viewportRTV.Get(), color);
+    g_context->ClearDepthStencilView(g_viewportDSV.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+
+    g_context->RSSetViewports(1, &g_viewportViewport);
 
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
@@ -309,9 +221,13 @@ void ashenvale::renderer::device::render()
     g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     g_context->DrawIndexed(3, 0, 0);
 
+    g_context->OMSetRenderTargets(1, ashenvale::renderer::swapchain::g_baseRTV.GetAddressOf(), nullptr);
+    g_context->ClearRenderTargetView(ashenvale::renderer::swapchain::g_renderTargetView.Get(), color);
+
+    g_context->RSSetViewports(1, &swapchain::g_viewport);
     ashenvale::editor::render();
 
-    g_swapChain->Present(1, 0);
+    ashenvale::renderer::swapchain::g_swapChain->Present(1, 0);
 
     PIXEndEvent();
 }
@@ -320,16 +236,63 @@ void ashenvale::renderer::device::shutdown()
 {
     PIXBeginEvent(0, "renderer.shutdown");
 
-    g_renderTargetView.Reset();
     g_context.Reset();
-    g_swapChain.Reset();
     g_device.Reset();
     g_factory.Reset();
     g_baseOutput.Reset();
-    g_depthStencilView.Reset();
-    g_depthStencilBuffer.Reset();
     g_vertexBuffer.Reset();
     g_pixelShader.Reset();
+    g_viewportTexture.Reset();
+    g_viewportRTV.Reset();
+    g_viewportSRV.Reset();
+    g_viewportDepthStencil.Reset();
+    g_viewportDSV.Reset();
+    g_viewportState.Reset();
 
     PIXEndEvent();
+}
+
+void ashenvale::renderer::device::resize_viewport(int width, int height)
+{
+    g_viewportTexture.Reset();
+    g_viewportRTV.Reset();
+    g_viewportSRV.Reset();
+    g_viewportDepthStencil.Reset();
+    g_viewportDSV.Reset();
+    g_viewportState.Reset();
+
+    D3D11_TEXTURE2D_DESC colorDesc = {};
+    colorDesc.Width = width;
+    colorDesc.Height = height;
+    colorDesc.MipLevels = 1;
+    colorDesc.ArraySize = 1;
+    colorDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    colorDesc.SampleDesc.Count = 1;
+    colorDesc.Usage = D3D11_USAGE_DEFAULT;
+    colorDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+    g_device->CreateTexture2D(&colorDesc, nullptr, &g_viewportTexture);
+    g_device->CreateRenderTargetView(g_viewportTexture.Get(), nullptr, &g_viewportRTV);
+    g_device->CreateShaderResourceView(g_viewportTexture.Get(), nullptr, &g_viewportSRV);
+
+    D3D11_TEXTURE2D_DESC depthDesc = colorDesc;
+    depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+    g_device->CreateTexture2D(&depthDesc, nullptr, &g_viewportDepthStencil);
+    g_device->CreateDepthStencilView(g_viewportDepthStencil.Get(), nullptr, &g_viewportDSV);
+
+    D3D11_DEPTH_STENCIL_DESC dsDesc = {};
+    dsDesc.DepthEnable = TRUE;
+    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+    g_device->CreateDepthStencilState(&dsDesc, &g_viewportState);
+
+    g_viewportViewport = {};
+    g_viewportViewport.Width = static_cast<float>(width);
+    g_viewportViewport.Height = static_cast<float>(height);
+    g_viewportViewport.MinDepth = 0.0f;
+    g_viewportViewport.MaxDepth = 1.0f;
+    g_viewportViewport.TopLeftX = 0.0f;
+    g_viewportViewport.TopLeftY = 0.0f;
 }

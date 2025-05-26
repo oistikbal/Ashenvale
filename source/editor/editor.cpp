@@ -14,7 +14,7 @@ bool ashenvale::editor::initialize()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    ImGui::StyleColorsDark();
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DockingEnable;
 
     ImGui_ImplWin32_Init(ashenvale::window::g_hwnd);
     ImGui_ImplDX11_Init(ashenvale::renderer::device::g_device.Get(), ashenvale::renderer::device::g_context.Get());
@@ -30,12 +30,45 @@ void ashenvale::editor::render()
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::Begin("Hello, world!");
-    ImGui::Text("Imgui");
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            ImGui::MenuItem("Empty");
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Assets")) {
+            ImGui::MenuItem("Empty");
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Windows")) {
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+
+    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
+
+    ImGui::Begin("Viewport");
+    ImVec2 size = ImGui::GetContentRegionAvail();
+    int newWidth = 16 > static_cast<int>(size.x) ? 16 : static_cast<int>(size.x);
+    int newHeight = 16 > static_cast<int>(size.y) ? 16 : static_cast<int>(size.y);;
+
+    static int lastW = 0, lastH = 0;
+    if (newWidth != lastW || newHeight != lastH)
+    {
+        lastW = newWidth;
+        lastH = newHeight;
+        ashenvale::renderer::device::resize_viewport(newWidth, newHeight);
+    }
+    ImGui::Image((ImTextureID)(intptr_t)ashenvale::renderer::device::g_viewportSRV.Get(), ImVec2(newWidth, newHeight));
     ImGui::End();
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+    ImGui::UpdatePlatformWindows();
+    ImGui::RenderPlatformWindowsDefault();
     PIXEndEvent();
 }
 
