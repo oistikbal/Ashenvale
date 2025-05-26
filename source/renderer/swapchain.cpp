@@ -1,11 +1,13 @@
 #include "renderer/swapchain.h"
 #include "renderer/device.h"
 #include "window/window.h"
+#include "profiler/profiler.h"
 
 using Microsoft::WRL::ComPtr;
 
 void ashenvale::renderer::swapchain::create(int width, int height)
 {
+    PIX_SCOPED_EVENT("swapchain.create")
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.BufferCount = 2;
     swapChainDesc.Width = width;
@@ -41,6 +43,7 @@ void ashenvale::renderer::swapchain::create(int width, int height)
 
 void ashenvale::renderer::swapchain::resize(int width, int height)
 {
+    PIX_SCOPED_EVENT("swapchain.resize")
     if (g_swapChain == nullptr)
         return;
 

@@ -10,7 +10,7 @@
 
 bool ashenvale::editor::initialize()
 {
-    PIXBeginEvent(0, "editor.initialize");
+    PIX_SCOPED_EVENT("editor.initialize")
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -19,13 +19,12 @@ bool ashenvale::editor::initialize()
     ImGui_ImplWin32_Init(ashenvale::window::g_hwnd);
     ImGui_ImplDX11_Init(ashenvale::renderer::device::g_device.Get(), ashenvale::renderer::device::g_context.Get());
 
-    PIXEndEvent();
     return true;
 }
 
 void ashenvale::editor::render()
 {
-    PIXBeginEvent(0, "editor.render");
+    PIX_SCOPED_EVENT("editor.render")
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
@@ -69,7 +68,6 @@ void ashenvale::editor::render()
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     ImGui::UpdatePlatformWindows();
     ImGui::RenderPlatformWindowsDefault();
-    PIXEndEvent();
 }
 
 LRESULT ashenvale::editor::wind_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

@@ -8,7 +8,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 bool ashenvale::window::initialize(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
-    PIXBeginEvent(0, "window.initialize");
+    PIX_SCOPED_EVENT("window.initialize")
     WNDCLASS wc = {};
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = GetModuleHandle(nullptr);
@@ -27,7 +27,6 @@ bool ashenvale::window::initialize(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     ShowWindow(g_hwnd, nCmdShow);
     UpdateWindow(g_hwnd);
-    PIXEndEvent();
     return true;
 }
 
@@ -36,7 +35,7 @@ void ashenvale::window::run()
     MSG msg = {};
     while (msg.message != WM_QUIT)
     {
-        PIXBeginEvent(0, "window.run");
+        PIX_SCOPED_EVENT("window.run")
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&msg);
@@ -44,7 +43,6 @@ void ashenvale::window::run()
         }
 
         ashenvale::renderer::device::render();
-        PIXEndEvent();
     }
 }
 

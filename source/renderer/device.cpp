@@ -27,14 +27,12 @@ struct Vertex {
 
 bool ashenvale::renderer::device::initialize()
 {
-    PIXBeginEvent(0, "renderer.initialize");
+    PIX_SCOPED_EVENT("device.initialize");
     HRESULT result;
     ComPtr<ID3D11Device> tempDevice;
     ComPtr<ID3D11DeviceContext> tempContext;
 
     result = CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&g_factory));
-    if (FAILED(result))
-        return false;
 
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
 
@@ -42,13 +40,8 @@ bool ashenvale::renderer::device::initialize()
         D3D11_SDK_VERSION, &tempDevice, nullptr, &tempContext);
 
     result = tempDevice.As(&g_device);
-    if (FAILED(result)) {
-        return false;
-    }
+
     result = tempContext.As(&g_context);
-    if (FAILED(result)) {
-        return false;
-    }
 
     ComPtr<IDXGIAdapter1> adapter;
     result = g_factory->EnumAdapterByGpuPreference(
@@ -56,19 +49,11 @@ bool ashenvale::renderer::device::initialize()
         DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
         IID_PPV_ARGS(&adapter)
     );
-    if (FAILED(result))
-        return false;
 
     ComPtr<IDXGIOutput> adapterOutput;
     result = adapter->EnumOutputs(0, &adapterOutput);
-    if (FAILED(result))
-        return false;
 
     result = adapterOutput.As(&g_baseOutput);
-
-    if (FAILED(result)) {
-        return false;
-    }
 
     DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
@@ -79,8 +64,6 @@ bool ashenvale::renderer::device::initialize()
         &numModes,
         nullptr
     );
-    if (FAILED(result))
-        return false;
 
     DXGI_MODE_DESC1 displayModeList[512] = {};
     result = g_baseOutput->GetDisplayModeList1(
@@ -90,8 +73,6 @@ bool ashenvale::renderer::device::initialize()
         displayModeList
     );
 
-    if (FAILED(result))
-        return false;
 
     UINT numerator = 0, denominator = 0;
     for (UINT i = 0; i < numModes; ++i) {
@@ -130,9 +111,6 @@ bool ashenvale::renderer::device::initialize()
     vertexData.pSysMem = triangleVertices;
 
     result = g_device->CreateBuffer(&vertexBufferDesc, &vertexData, &g_vertexBuffer);
-    if (FAILED(result)) {
-        return false;
-    }
 
     uint16_t indices[] = { 0, 1, 2 };
 
@@ -146,9 +124,6 @@ bool ashenvale::renderer::device::initialize()
     indexData.pSysMem = indices;
 
     result = g_device->CreateBuffer(&indexBufferDesc, &indexData, &g_indexBuffer);
-    if (FAILED(result)) {
-        return false;
-    }
 
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
@@ -164,19 +139,12 @@ bool ashenvale::renderer::device::initialize()
 
     result = renderer::shader_compiler::compile(L"vs.hlsl", "main", "vs_5_0", nullptr, vsBlob.GetAddressOf(), errorBlob.GetAddressOf());
 
-    if (FAILED(result)) {
-        return false;
-    }
-
     g_device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &g_vertexShader);
 
     g_context->VSSetShader(g_vertexShader.Get(), nullptr, 0);
 
     result = renderer::shader_compiler::compile(L"ps.hlsl", "main", "ps_5_0", nullptr, psBlob.GetAddressOf(), errorBlob.GetAddressOf());
 
-    if (FAILED(result)) {
-        return false;
-    }
 
     g_device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &g_pixelShader);
 
@@ -192,13 +160,12 @@ bool ashenvale::renderer::device::initialize()
 
     resize_viewport(renderWidth, renderHeight);
 
-    PIXEndEvent();
     return true;
 }
 
 void ashenvale::renderer::device::render()
 {
-    PIXBeginEvent(0, "renderer.render");
+    PIX_SCOPED_EVENT("device.render")
     const float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     g_context->OMSetRenderTargets(1, g_viewportRTV.GetAddressOf(), g_viewportDSV.Get());
     g_context->OMSetDepthStencilState(g_viewportState.Get(), 1);
@@ -228,13 +195,11 @@ void ashenvale::renderer::device::render()
     ashenvale::editor::render();
 
     ashenvale::renderer::swapchain::g_swapChain->Present(1, 0);
-
-    PIXEndEvent();
 }
 
 void ashenvale::renderer::device::shutdown()
 {
-    PIXBeginEvent(0, "renderer.shutdown");
+    PIX_SCOPED_EVENT("device.shutdown")
 
     g_context.Reset();
     g_device.Reset();
@@ -248,12 +213,11 @@ void ashenvale::renderer::device::shutdown()
     g_viewportDepthStencil.Reset();
     g_viewportDSV.Reset();
     g_viewportState.Reset();
-
-    PIXEndEvent();
 }
 
 void ashenvale::renderer::device::resize_viewport(int width, int height)
 {
+    PIX_SCOPED_EVENT("device.resize_viewport")
     g_viewportTexture.Reset();
     g_viewportRTV.Reset();
     g_viewportSRV.Reset();
