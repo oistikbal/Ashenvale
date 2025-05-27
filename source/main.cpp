@@ -21,7 +21,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     }
 
     ashenvale::window::run();
-    ashenvale::renderer::device::shutdown();
 
     return 0;
 }

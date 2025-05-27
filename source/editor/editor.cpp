@@ -7,6 +7,7 @@
 #include "window/window.h"
 #include "renderer/device.h"
 #include "profiler/profiler.h"
+#include <renderer/renderer.h>
 
 bool ashenvale::editor::initialize()
 {
@@ -59,9 +60,9 @@ void ashenvale::editor::render()
     {
         lastW = newWidth;
         lastH = newHeight;
-        ashenvale::renderer::device::resize_viewport(newWidth, newHeight);
+        ashenvale::renderer::resize_viewport(newWidth, newHeight);
     }
-    ImGui::Image((ImTextureID)(intptr_t)ashenvale::renderer::device::g_viewportSRV.Get(), ImVec2(newWidth, newHeight));
+    ImGui::Image((ImTextureID)(intptr_t)ashenvale::renderer::g_viewportSRV.Get(), ImVec2(newWidth, newHeight));
     ImGui::End();
 
     ImGui::Render();

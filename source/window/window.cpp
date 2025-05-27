@@ -1,8 +1,8 @@
 #include "window/window.h"
-#include "renderer/device.h"
 #include "renderer/swapchain.h"
 #include "profiler/profiler.h"
 #include "editor/editor.h"
+#include <renderer/renderer.h>
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -42,7 +42,7 @@ void ashenvale::window::run()
             DispatchMessage(&msg);
         }
 
-        ashenvale::renderer::device::render();
+        ashenvale::renderer::render();
     }
 }
 
