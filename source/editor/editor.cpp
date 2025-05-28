@@ -18,7 +18,7 @@ bool ashenvale::editor::initialize()
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DockingEnable;
 
     ImGui_ImplWin32_Init(ashenvale::window::g_hwnd);
-    ImGui_ImplDX11_Init(ashenvale::renderer::device::g_device.Get(), ashenvale::renderer::device::g_context.Get());
+    ImGui_ImplDX11_Init(ashenvale::renderer::device::g_device.get(), ashenvale::renderer::device::g_context.get());
 
     return true;
 }
@@ -62,7 +62,7 @@ void ashenvale::editor::render()
         lastH = newHeight;
         ashenvale::renderer::resize_viewport(newWidth, newHeight);
     }
-    ImGui::Image((ImTextureID)(intptr_t)ashenvale::renderer::g_viewportSRV.Get(), ImVec2(newWidth, newHeight));
+    ImGui::Image((ImTextureID)(intptr_t)ashenvale::renderer::g_viewportSRV.get(), ImVec2(newWidth, newHeight));
     ImGui::End();
 
     ImGui::Render();

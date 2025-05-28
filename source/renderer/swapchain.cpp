@@ -3,7 +3,7 @@
 #include "window/window.h"
 #include "profiler/profiler.h"
 
-using Microsoft::WRL::ComPtr;
+using namespace winrt;
 
 void ashenvale::renderer::swapchain::create(int width, int height)
 {
@@ -19,12 +19,12 @@ void ashenvale::renderer::swapchain::create(int width, int height)
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.Flags = 0;
 
-    ComPtr<IDXGISwapChain1> tempSwapchain;
+    com_ptr<IDXGISwapChain1> tempSwapchain;
     ashenvale::renderer::device::g_factory->CreateSwapChainForHwnd(
-        ashenvale::renderer::device::g_device.Get(), ashenvale::window::g_hwnd, &swapChainDesc, nullptr, nullptr, tempSwapchain.GetAddressOf());
+        ashenvale::renderer::device::g_device.get(), ashenvale::window::g_hwnd, &swapChainDesc, nullptr, nullptr, tempSwapchain.put());
 
-    tempSwapchain.As(&g_baseSwapchain);
-    tempSwapchain.As(&g_swapChain);
+    tempSwapchain.as(g_baseSwapchain);
+    tempSwapchain.as(g_swapChain);
 
     g_viewport = {};
     g_viewport.Width = static_cast<float>(width);
@@ -34,11 +34,11 @@ void ashenvale::renderer::swapchain::create(int width, int height)
     g_viewport.TopLeftX = 0.0f;
     g_viewport.TopLeftY = 0.0f;
 
-    ComPtr<ID3D11Texture2D> backBuffer;
-    g_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    com_ptr<ID3D11Texture2D> backBuffer;
+    g_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.put()));
 
-    ashenvale::renderer::device::g_device->CreateRenderTargetView1(backBuffer.Get(), nullptr, g_renderTargetView.GetAddressOf());
-    g_renderTargetView.As(&g_baseRTV);
+    ashenvale::renderer::device::g_device->CreateRenderTargetView1(backBuffer.get(), nullptr, g_renderTargetView.put());
+    g_renderTargetView.as(g_baseRTV);
 }
 
 void ashenvale::renderer::swapchain::resize(int width, int height)
@@ -47,16 +47,17 @@ void ashenvale::renderer::swapchain::resize(int width, int height)
     if (g_swapChain == nullptr)
         return;
 
-    g_renderTargetView.Reset();
-    g_baseRTV.Reset();
+    g_renderTargetView = nullptr;
+    g_baseRTV = nullptr;
+
 
     g_swapChain->ResizeBuffers(2, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
 
-    ComPtr<ID3D11Texture2D> backBuffer;
-    g_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    com_ptr<ID3D11Texture2D> backBuffer;
+    g_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.put()));
 
-    ashenvale::renderer::device::g_device->CreateRenderTargetView1(backBuffer.Get(), nullptr, g_renderTargetView.GetAddressOf());
-    g_renderTargetView.As(&g_baseRTV);
+    ashenvale::renderer::device::g_device->CreateRenderTargetView1(backBuffer.get(), nullptr, g_renderTargetView.put());
+    g_renderTargetView.as(g_baseRTV);
 
     g_viewport = {};
     g_viewport.Width = static_cast<float>(width);

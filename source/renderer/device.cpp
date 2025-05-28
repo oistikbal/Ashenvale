@@ -10,37 +10,33 @@
 #include "renderer/swapchain.h"
 
 
-using Microsoft::WRL::ComPtr;
+using namespace winrt;
 
 bool ashenvale::renderer::device::initialize()
 {
     PIX_SCOPED_EVENT("device.initialize");
     HRESULT result;
-    ComPtr<ID3D11Device> tempDevice;
-    ComPtr<ID3D11DeviceContext> tempContext;
+    com_ptr<ID3D11Device> tempDevice;
+    com_ptr<ID3D11DeviceContext> tempContext;
 
-    result = CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&g_factory));
+    CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&g_factory));
 
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
 
-    result = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_DEBUG, &featureLevel, 1,
-        D3D11_SDK_VERSION, &tempDevice, nullptr, &tempContext);
+    D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_DEBUG, &featureLevel, 1,
+        D3D11_SDK_VERSION, tempDevice.put(), nullptr, tempContext.put());
 
-    result = tempDevice.As(&g_device);
+    tempDevice.as(g_device);
 
-    result = tempContext.As(&g_context);
+    tempContext.as(g_context);
 
-    ComPtr<IDXGIAdapter1> adapter;
-    result = g_factory->EnumAdapterByGpuPreference(
-        0,
-        DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
-        IID_PPV_ARGS(&adapter)
-    );
+    com_ptr<IDXGIAdapter1> adapter;
+    g_factory->EnumAdapterByGpuPreference(0,DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,IID_PPV_ARGS(&adapter));
 
-    ComPtr<IDXGIOutput> adapterOutput;
-    result = adapter->EnumOutputs(0, &adapterOutput);
+    com_ptr<IDXGIOutput> adapterOutput;
+    adapter->EnumOutputs(0, adapterOutput.put());
 
-    result = adapterOutput.As(&g_baseOutput);
+    adapterOutput.as(g_baseOutput);
 
     DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
