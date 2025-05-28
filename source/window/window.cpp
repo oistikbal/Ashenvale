@@ -2,7 +2,8 @@
 #include "renderer/swapchain.h"
 #include "profiler/profiler.h"
 #include "editor/editor.h"
-#include <renderer/renderer.h>
+#include "renderer/renderer.h"
+#include "window/input.h"
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -53,6 +54,20 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     switch (uMsg)
     {
+    case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+    case WM_KEYUP:
+    case WM_SYSKEYUP:
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONUP:
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONUP:
+    case WM_MBUTTONDOWN:
+    case WM_MBUTTONUP:
+    case WM_MOUSEMOVE:
+        ashenvale::window::input::update(hwnd, uMsg, wParam, lParam);
+        break;
+
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
