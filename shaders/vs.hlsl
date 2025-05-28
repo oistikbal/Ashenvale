@@ -1,4 +1,7 @@
-// Vertex Shader: triangle_vs.hlsl
+cbuffer CameraBuffer : register(b0)
+{
+    float4x4 viewProjection;
+};
 
 struct VSInput
 {
@@ -15,7 +18,7 @@ struct PSInput
 PSInput main(VSInput input)
 {
     PSInput output;
-    output.position = float4(input.position, 1.0); // Transform to homogeneous clip space
+    output.position = mul(float4(input.position, 1.0), viewProjection);
     output.color = input.color;
     return output;
 }

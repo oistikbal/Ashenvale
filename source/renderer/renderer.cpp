@@ -8,6 +8,7 @@
 #include "renderer/shader_compiler.h"
 #include "editor/editor.h"
 #include "renderer/swapchain.h"
+#include "camera.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -16,6 +17,7 @@ static ComPtr<ID3D11Buffer> g_indexBuffer;
 static ComPtr<ID3D11VertexShader> g_vertexShader;
 static ComPtr<ID3D11PixelShader> g_pixelShader;
 static ComPtr<ID3D11InputLayout> g_inputLayout;
+static ComPtr<ID3D11Buffer> g_cameraBuffer;
 static D3D11_VIEWPORT g_viewportViewport;
 
 struct Vertex {
@@ -56,14 +58,6 @@ void ashenvale::renderer::initialize()
 
     renderer::device::g_device->CreateBuffer(&indexBufferDesc, &indexData, &g_indexBuffer);
 
-    UINT stride = sizeof(Vertex);
-    UINT offset = 0;
-    renderer::device::g_context->IASetVertexBuffers(0, 1, g_vertexBuffer.GetAddressOf(), &stride, &offset);
-
-    renderer::device::g_context->IASetIndexBuffer(g_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-
-    renderer::device::g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
     ComPtr<ID3DBlob> errorBlob;
     ComPtr<ID3DBlob> vsBlob;
     ComPtr<ID3DBlob> psBlob;
@@ -72,13 +66,9 @@ void ashenvale::renderer::initialize()
 
     renderer::device::g_device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &g_vertexShader);
 
-    renderer::device::g_context->VSSetShader(g_vertexShader.Get(), nullptr, 0);
-
     renderer::shader_compiler::compile(L"ps.hlsl", "main", "ps_5_0", nullptr, psBlob.GetAddressOf(), errorBlob.GetAddressOf());
 
     renderer::device::g_device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &g_pixelShader);
-
-    renderer::device::g_context->PSSetShader(g_pixelShader.Get(), nullptr, 0);
 
     ComPtr<ID3D11ShaderReflection> reflection;
     D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), IID_PPV_ARGS(&reflection));
@@ -86,7 +76,16 @@ void ashenvale::renderer::initialize()
     auto layouts = renderer::shader_compiler::get_input_layout(reflection.Get());
 
     renderer::device::g_device->CreateInputLayout(layouts.data(), layouts.size(), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), g_inputLayout.GetAddressOf());
-    renderer::device::g_context->IASetInputLayout(g_inputLayout.Get());
+
+    D3D11_BUFFER_DESC cameraBufferDesc = {};
+    cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+    cameraBufferDesc.ByteWidth = sizeof(DirectX::XMFLOAT4X4);
+    cameraBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    cameraBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    renderer::device::g_device->CreateBuffer(&cameraBufferDesc, nullptr, g_cameraBuffer.GetAddressOf());
+
+    renderer::camera::initialize();
 }
 
 void ashenvale::renderer::resize_viewport(int width, int height)
@@ -139,7 +138,7 @@ void ashenvale::renderer::render()
 {
     PIX_SCOPED_EVENT("renderer.render")
     const float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-
+    renderer::camera::update(90.0f, 1.6f, 0.1f, 1000.0f);
     renderer::device::g_context->OMSetRenderTargets(1, g_viewportRTV.GetAddressOf(), g_viewportDSV.Get());
     renderer::device::g_context->OMSetDepthStencilState(g_viewportDepthStencilState.Get(), 1);
 
@@ -157,6 +156,18 @@ void ashenvale::renderer::render()
 
     renderer::device::g_context->VSSetShader(g_vertexShader.Get(), nullptr, 0);
     renderer::device::g_context->PSSetShader(g_pixelShader.Get(), nullptr, 0);
+
+    DirectX::XMFLOAT4X4 viewProjection = {};
+    DirectX::XMStoreFloat4x4(&viewProjection, DirectX::XMMatrixTranspose(ashenvale::renderer::camera::g_viewProjectionMatrix));
+
+    D3D11_MAPPED_SUBRESOURCE mappedResource = {};
+
+    renderer::device::g_context->Map( g_cameraBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+    memcpy(mappedResource.pData, &viewProjection, sizeof(DirectX::XMFLOAT4X4));
+    renderer::device::g_context->Unmap(g_cameraBuffer.Get(), 0);
+
+    renderer::device::g_context->VSSetConstantBuffers(0, 1, g_cameraBuffer.GetAddressOf());
+
     renderer::device::g_context->DrawIndexed(3, 0, 0);
 
     renderer::device::g_context->OMSetRenderTargets(1, ashenvale::renderer::swapchain::g_baseRTV.GetAddressOf(), nullptr);
