@@ -34,6 +34,9 @@ bool ashenvale::window::initialize(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 void ashenvale::window::run()
 {
     MSG msg = {};
+
+    auto lastTime = std::chrono::high_resolution_clock::now();
+
     while (msg.message != WM_QUIT)
     {
         PIX_SCOPED_EVENT("window.run")
@@ -42,7 +45,11 @@ void ashenvale::window::run()
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+        auto now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> delta = now - lastTime;
+        lastTime = now;
 
+        ashenvale::window::input::update(delta.count());
         ashenvale::renderer::render();
     }
 }
@@ -65,7 +72,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     case WM_MBUTTONDOWN:
     case WM_MBUTTONUP:
     case WM_MOUSEMOVE:
-        ashenvale::window::input::update(hwnd, uMsg, wParam, lParam);
+        ashenvale::window::input::input_winproc(hwnd, uMsg, wParam, lParam);
         break;
 
         case WM_DESTROY:

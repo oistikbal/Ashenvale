@@ -1,11 +1,53 @@
+#include <algorithm>
+
+#include "renderer/camera.h"
 #include "input.h"
 
-static bool g_inputs[256] = {};
-static bool g_mouse_buttons[3] = {};
-static int g_mouse_x = 0;
-static int g_mouse_y = 0;
+using namespace ashenvale::renderer::camera;
+using namespace DirectX;
 
-void ashenvale::window::input::update(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+void ashenvale::window::input::update(float deltaTime)
+{
+    const float moveSpeed = 2.0f * deltaTime;
+    const float mouseSensitivity = 0.002f;
+
+    static int lastMouseX = ashenvale::window::input::g_mouse_x;
+    static int lastMouseY = ashenvale::window::input::g_mouse_y;
+
+    int deltaX = ashenvale::window::input::g_mouse_x - lastMouseX;
+    int deltaY = ashenvale::window::input::g_mouse_y - lastMouseY;
+
+    lastMouseX = ashenvale::window::input::g_mouse_x;
+    lastMouseY = ashenvale::window::input::g_mouse_y;
+
+
+    if (ashenvale::window::input::g_mouse_buttons[1])
+    {
+        g_rotation.y += deltaX * mouseSensitivity;
+        g_rotation.x += deltaY * mouseSensitivity;
+
+        g_rotation.x = std::clamp(g_rotation.x, -XM_PIDIV2 + 0.01f, XM_PIDIV2 - 0.01f);
+    }
+
+    ashenvale::renderer::camera::g_rotation.x = std::clamp(g_rotation.x, -XM_PIDIV2 + 0.01f, XM_PIDIV2 - 0.01f);
+
+    XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(g_rotation.x, g_rotation.y, g_rotation.z);
+
+    XMVECTOR forward = XMVector3TransformNormal(XMVectorSet(0, 0, 1, 0), rotationMatrix);
+    XMVECTOR right = XMVector3TransformNormal(XMVectorSet(1, 0, 0, 0), rotationMatrix);
+    XMVECTOR up = XMVectorSet(0, 1, 0, 0);
+
+    XMVECTOR position = XMLoadFloat3(&g_position);
+
+    if (ashenvale::window::input::g_inputs['W']) position = XMVectorAdd(position, XMVectorScale(forward, moveSpeed));
+    if (ashenvale::window::input::g_inputs['S']) position = XMVectorSubtract(position, XMVectorScale(forward, moveSpeed));
+    if (ashenvale::window::input::g_inputs['A']) position = XMVectorSubtract(position, XMVectorScale(right, moveSpeed));
+    if (ashenvale::window::input::g_inputs['D']) position = XMVectorAdd(position, XMVectorScale(right, moveSpeed));
+
+    XMStoreFloat3(&g_position, position);
+}
+
+void ashenvale::window::input::input_winproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     switch (msg)
     {
