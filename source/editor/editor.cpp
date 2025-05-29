@@ -9,6 +9,7 @@
 #include "profiler/profiler.h"
 #include "renderer/renderer.h"
 #include "editor/viewport.h"
+#include "console.h"
 
 bool ashenvale::editor::initialize()
 {
@@ -108,6 +109,9 @@ bool ashenvale::editor::initialize()
     style.ScrollbarSize = 14;
     style.GrabMinSize = 10;
 
+
+    ashenvale::editor::console::initialize();
+
     return true;
 }
 
@@ -139,6 +143,7 @@ void ashenvale::editor::render()
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
 
     ashenvale::editor::viewport::render();
+    ashenvale::editor::console::render();
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
