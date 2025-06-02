@@ -3,6 +3,7 @@
 #include "profiler/profiler.h"
 #include "editor/viewport.h"
 #include "renderer/renderer.h"
+#include "renderer/render_graph.h"
 
 void ashenvale::editor::viewport::render()
 {
@@ -22,9 +23,12 @@ void ashenvale::editor::viewport::render()
 
     ImGui::SameLine();
     static int currentItem = 0;
-    const char* items[] = { "Shaded", "Depth", "Wireframe", "Wireframe Shaded" };
+    const char* items[] = { "None", "Depth", "Wireframe", "Wireframe Lit" };
+
     ImGui::SetNextItemWidth(100);
     ImGui::Combo("##combo", &currentItem, items, IM_ARRAYSIZE(items));
+
+    renderer::render_graph::g_debugView = static_cast<ashenvale::renderer::render_graph::debug_view>(static_cast<uint8_t>(currentItem));
 
     ImGui::EndChild();
 

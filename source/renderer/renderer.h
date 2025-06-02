@@ -12,6 +12,10 @@ namespace ashenvale::renderer
 	inline winrt::com_ptr<ID3D11Texture2D> g_viewportDepthStencil = nullptr;
 	inline winrt::com_ptr<ID3D11DepthStencilView> g_viewportDSV = nullptr;
 	inline winrt::com_ptr<ID3D11DepthStencilState> g_viewportDepthStencilState = nullptr;
+	inline winrt::com_ptr<ID3D11DepthStencilState> g_viewportDepthStencilStateDisabled = nullptr;
+	inline winrt::com_ptr<ID3D11ShaderResourceView> g_viewportDepthSRV = nullptr;
+
+	inline D3D11_VIEWPORT g_viewportViewport;
 }
 
 namespace ashenvale::renderer 
