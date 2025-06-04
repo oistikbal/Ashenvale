@@ -3,13 +3,24 @@
 #include <d3d11_4.h>
 #include <stdint.h>
 
+#include "render_graph.h"
+
 namespace ashenvale::renderer::render_pass
 {
+	struct render_pass_pso
+	{
+		ID3D11InputLayout* inputLayout = nullptr;
+		ID3D11VertexShader* vs = nullptr;
+		ID3D11PixelShader* ps = nullptr;
+		ID3D11RasterizerState* rs = nullptr;
+		ID3D11BlendState* bs = nullptr;
+		ID3D11DepthStencilState* dss = nullptr;
+		D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	};
 
 	struct clear_pass_context
 	{
-		ID3D11RenderTargetView* rtvs[1];
-		int rtvCount;
+		ID3D11RenderTargetView* rtv;
 		ID3D11DepthStencilView* dsv;
 		float clearColor[4];
 		float clearDepth;
@@ -18,43 +29,37 @@ namespace ashenvale::renderer::render_pass
 
 	struct geometry_pass_context
 	{
-		ID3D11RenderTargetView* rtvs[4];
-		int rtvCount;
+		ID3D11RenderTargetView* rtv;
 		ID3D11DepthStencilView* dsv;
 	};
 
 	struct editor_pass_context
 	{
-		ID3D11RenderTargetView* rtvs[4];
-		int rtvCount;
-		ID3D11DepthStencilView* dsv;
+		ID3D11RenderTargetView* rtv;
+		float clearColor[4];
+		D3D11_VIEWPORT viewport;
 	};
 
 	struct present_pass_context
 	{
-		ID3D11RenderTargetView* rtvs[1];
-		int rtvCount = 1;
 	};
 
 	struct debug_depth_pass_context
 	{
-		ID3D11RenderTargetView* rtvs[1];
-		int rtvCount = 1;
-		ID3D11DepthStencilView* dsv;
+		ID3D11RenderTargetView* rtv;
+		D3D11_VIEWPORT viewport;
 	};
 
 	struct debug_wireframe_pass_context
 	{
-		ID3D11RenderTargetView* rtvs[1];
-		int rtvCount = 1;
+		ID3D11RenderTargetView* rtv;
 		ID3D11DepthStencilView* dsv;
 		ID3D11RasterizerState* rasterizerState;
 	};
 
 	struct debug_wireframe_shaded_pass_context
 	{
-		ID3D11RenderTargetView* rtvs[1];
-		int rtvCount = 1;
+		ID3D11RenderTargetView* rtvs;
 		ID3D11DepthStencilView* dsv;
 		ID3D11RasterizerState* rasterizerState;
 	};
@@ -84,4 +89,7 @@ namespace ashenvale::renderer::render_pass
 namespace ashenvale::renderer::render_pass
 {
 	void initialize();
+	void resize();
+	void bind_pso(const render_pass_pso& pso);
+	void render();
 }

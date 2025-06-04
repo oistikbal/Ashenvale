@@ -22,16 +22,11 @@ namespace ashenvale::renderer::render_graph
 
 	inline render_path g_renderPath = render_path::forward;
 	inline debug_view g_debugView = debug_view::none;
-
-	inline ashenvale::renderer::render_pass::render_pass_info g_forwardPathPassInfos[3];
-
-	inline ashenvale::renderer::render_pass::render_pass_info g_presentPassInfo;
-	inline ashenvale::renderer::render_pass::render_pass_info g_editorPassInfo;
-	inline ashenvale::renderer::render_pass::render_pass_info g_debugDepthPassInfo;
 }
 
 namespace ashenvale::renderer::render_graph
 {
 	void initialize();
 	void render();
+	void resize();
 }

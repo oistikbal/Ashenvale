@@ -82,6 +82,8 @@ void ashenvale::renderer::resize_viewport(int width, int height)
     g_viewportViewport.MaxDepth = 1.0f;
     g_viewportViewport.TopLeftX = 0.0f;
     g_viewportViewport.TopLeftY = 0.0f;
+
+    render_graph::resize();
 }
 
 void ashenvale::renderer::render()
