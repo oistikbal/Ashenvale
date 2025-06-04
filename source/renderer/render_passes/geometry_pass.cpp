@@ -1,40 +1,41 @@
 #include "geometry_pass.h"
 
+#include "renderer/camera.h"
+#include "renderer/device.h"
+#include "renderer/renderer.h"
+#include "renderer/shader_compiler.h"
 #include <d3d11_4.h>
 #include <winrt/base.h>
-#include "renderer/device.h"
-#include "renderer/camera.h"
-#include "renderer/shader_compiler.h"
-#include "renderer/renderer.h"
 
 using namespace winrt;
 
-struct Vertex {
+struct Vertex
+{
     DirectX::XMFLOAT3 position;
     DirectX::XMFLOAT4 color;
 };
 
 namespace
 {
-	ashenvale::renderer::render_pass::render_pass_pso g_pso;
+ashenvale::renderer::render_pass::render_pass_pso g_pso;
 
-    com_ptr<ID3D11Buffer> g_vertexBuffer;
-    com_ptr<ID3D11Buffer> g_indexBuffer;
-    com_ptr<ID3D11VertexShader> g_vertexShader;
-    com_ptr<ID3D11PixelShader> g_pixelShader;
-    com_ptr<ID3D11InputLayout> g_inputLayout;
-    com_ptr<ID3D11Buffer> g_cameraBuffer;
-    com_ptr<ID3D11SamplerState> g_sampler;
-    com_ptr<ID3D11RasterizerState> g_rasterizer;
-    com_ptr<ID3D11DepthStencilState> g_depthStencilState;
-}
+com_ptr<ID3D11Buffer> g_vertexBuffer;
+com_ptr<ID3D11Buffer> g_indexBuffer;
+com_ptr<ID3D11VertexShader> g_vertexShader;
+com_ptr<ID3D11PixelShader> g_pixelShader;
+com_ptr<ID3D11InputLayout> g_inputLayout;
+com_ptr<ID3D11Buffer> g_cameraBuffer;
+com_ptr<ID3D11SamplerState> g_sampler;
+com_ptr<ID3D11RasterizerState> g_rasterizer;
+com_ptr<ID3D11DepthStencilState> g_depthStencilState;
+} // namespace
 
 void ashenvale::renderer::render_pass::geometry::initialize()
 {
     Vertex triangleVertices[] = {
- { {  0.0f,  0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top (Red)
- { {  0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Right (Green)
- { { -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }   // Left (Blue)
+        {{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},  // Top (Red)
+        {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}}, // Right (Green)
+        {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}} // Left (Blue)
     };
 
     D3D11_BUFFER_DESC vertexBufferDesc = {};
@@ -48,7 +49,7 @@ void ashenvale::renderer::render_pass::geometry::initialize()
 
     renderer::device::g_device->CreateBuffer(&vertexBufferDesc, &vertexData, g_vertexBuffer.put());
 
-    uint16_t indices[] = { 0, 1, 2 };
+    uint16_t indices[] = {0, 1, 2};
 
     D3D11_BUFFER_DESC indexBufferDesc = {};
     indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -67,18 +68,21 @@ void ashenvale::renderer::render_pass::geometry::initialize()
 
     renderer::shader_compiler::compile(L"vs.hlsl", "main", "vs_5_0", nullptr, vsBlob.put(), errorBlob.put());
 
-    renderer::device::g_device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, g_vertexShader.put());
+    renderer::device::g_device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr,
+                                                   g_vertexShader.put());
 
     renderer::shader_compiler::compile(L"ps.hlsl", "main", "ps_5_0", nullptr, psBlob.put(), errorBlob.put());
 
-    renderer::device::g_device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, g_pixelShader.put());
+    renderer::device::g_device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr,
+                                                  g_pixelShader.put());
 
     com_ptr<ID3D11ShaderReflection> reflection;
     D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), IID_PPV_ARGS(reflection.put()));
 
     auto layouts = renderer::shader_compiler::get_input_layout(reflection.get());
 
-    renderer::device::g_device->CreateInputLayout(layouts.data(), layouts.size(), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), g_inputLayout.put());
+    renderer::device::g_device->CreateInputLayout(layouts.data(), layouts.size(), vsBlob->GetBufferPointer(),
+                                                  vsBlob->GetBufferSize(), g_inputLayout.put());
 
     D3D11_BUFFER_DESC cameraBufferDesc = {};
     cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -117,25 +121,24 @@ void ashenvale::renderer::render_pass::geometry::initialize()
     g_pso.rs = g_rasterizer.get();
 }
 
-void ashenvale::renderer::render_pass::geometry::execute(const render_pass_context& context)
+void ashenvale::renderer::render_pass::geometry::execute(const render_pass_context &context)
 {
     bind_pso(g_pso);
 
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
 
-    ID3D11RenderTargetView* const rtvs[] = { context.geometry.rtv };
+    ID3D11RenderTargetView *const rtvs[] = {context.geometry.rtv};
     ashenvale::renderer::device::g_context->OMSetRenderTargets(1, rtvs, context.geometry.dsv);
     ashenvale::renderer::device::g_context->RSSetViewports(1, &ashenvale::renderer::g_viewportViewport);
 
-
-
-    ID3D11Buffer* const vertexBuffers[] = { g_vertexBuffer.get() };
+    ID3D11Buffer *const vertexBuffers[] = {g_vertexBuffer.get()};
     ashenvale::renderer::device::g_context->IASetVertexBuffers(0, 1, vertexBuffers, &stride, &offset);
     ashenvale::renderer::device::g_context->IASetIndexBuffer(g_indexBuffer.get(), DXGI_FORMAT_R16_UINT, 0);
 
     DirectX::XMFLOAT4X4 viewProjection = {};
-    DirectX::XMStoreFloat4x4(&viewProjection, DirectX::XMMatrixTranspose(ashenvale::renderer::camera::g_viewProjectionMatrix));
+    DirectX::XMStoreFloat4x4(&viewProjection,
+                             DirectX::XMMatrixTranspose(ashenvale::renderer::camera::g_viewProjectionMatrix));
 
     D3D11_MAPPED_SUBRESOURCE mappedResource = {};
 
@@ -143,7 +146,7 @@ void ashenvale::renderer::render_pass::geometry::execute(const render_pass_conte
     memcpy(mappedResource.pData, &viewProjection, sizeof(DirectX::XMFLOAT4X4));
     ashenvale::renderer::device::g_context->Unmap(g_cameraBuffer.get(), 0);
 
-    ID3D11Buffer* const pixelBuffers[] = { g_cameraBuffer.get() };
+    ID3D11Buffer *const pixelBuffers[] = {g_cameraBuffer.get()};
     ashenvale::renderer::device::g_context->VSSetConstantBuffers(0, 1, pixelBuffers);
 
     ashenvale::renderer::device::g_context->DrawIndexed(3, 0, 0);

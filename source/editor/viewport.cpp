@@ -1,9 +1,9 @@
 #include <imgui.h>
 
-#include "profiler/profiler.h"
 #include "editor/viewport.h"
-#include "renderer/renderer.h"
+#include "profiler/profiler.h"
 #include "renderer/render_graph.h"
+#include "renderer/renderer.h"
 
 void ashenvale::editor::viewport::render()
 {
@@ -18,22 +18,22 @@ void ashenvale::editor::viewport::render()
     ImGui::SetCursorScreenPos(imagePos);
 
     ImGui::BeginChild("TopBar", ImVec2((float)topbarWidth, 25.0f), false,
-        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove |
+                          ImGuiWindowFlags_NoSavedSettings);
 
     ImGui::SameLine();
     static int currentItem = 0;
-    const char* items[] = { "None", "Depth", "Wireframe", "Wireframe Lit" };
+    const char *items[] = {"None", "Depth", "Wireframe", "Wireframe Lit"};
 
     ImGui::SetNextItemWidth(100);
     ImGui::Combo("##combo", &currentItem, items, IM_ARRAYSIZE(items));
 
-    renderer::render_graph::g_debugView = static_cast<ashenvale::renderer::render_graph::debug_view>(static_cast<uint8_t>(currentItem));
+    renderer::render_graph::g_debugView =
+        static_cast<ashenvale::renderer::render_graph::debug_view>(static_cast<uint8_t>(currentItem));
 
     ImGui::EndChild();
 
     ImGui::SetCursorScreenPos(ImVec2(imagePos.x, imagePos.y + 24.0f));
-
 
     size = ImGui::GetContentRegionAvail();
     int newWidth = size.x < 16 ? 16 : static_cast<int>(size.x);

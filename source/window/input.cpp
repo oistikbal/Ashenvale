@@ -1,7 +1,7 @@
 #include <algorithm>
 
-#include "renderer/camera.h"
 #include "input.h"
+#include "renderer/camera.h"
 
 using namespace ashenvale::renderer::camera;
 using namespace DirectX;
@@ -19,7 +19,6 @@ void ashenvale::window::input::update(float deltaTime)
 
     lastMouseX = ashenvale::window::input::g_mouse_x;
     lastMouseY = ashenvale::window::input::g_mouse_y;
-
 
     if (ashenvale::window::input::g_mouse_buttons[1])
     {
@@ -39,10 +38,14 @@ void ashenvale::window::input::update(float deltaTime)
 
     XMVECTOR position = XMLoadFloat3(&g_position);
 
-    if (ashenvale::window::input::g_inputs['W']) position = XMVectorAdd(position, XMVectorScale(forward, moveSpeed));
-    if (ashenvale::window::input::g_inputs['S']) position = XMVectorSubtract(position, XMVectorScale(forward, moveSpeed));
-    if (ashenvale::window::input::g_inputs['A']) position = XMVectorSubtract(position, XMVectorScale(right, moveSpeed));
-    if (ashenvale::window::input::g_inputs['D']) position = XMVectorAdd(position, XMVectorScale(right, moveSpeed));
+    if (ashenvale::window::input::g_inputs['W'])
+        position = XMVectorAdd(position, XMVectorScale(forward, moveSpeed));
+    if (ashenvale::window::input::g_inputs['S'])
+        position = XMVectorSubtract(position, XMVectorScale(forward, moveSpeed));
+    if (ashenvale::window::input::g_inputs['A'])
+        position = XMVectorSubtract(position, XMVectorScale(right, moveSpeed));
+    if (ashenvale::window::input::g_inputs['D'])
+        position = XMVectorAdd(position, XMVectorScale(right, moveSpeed));
 
     XMStoreFloat3(&g_position, position);
 }

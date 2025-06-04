@@ -3,36 +3,29 @@
 
 #include <string>
 
-
-HRESULT ashenvale::renderer::shader_compiler::compile(const wchar_t* file, const char* entryPoint, const char* target,
-    const D3D_SHADER_MACRO* defines, ID3DBlob** shaderBlob, ID3DBlob** errorBlob) {
+HRESULT ashenvale::renderer::shader_compiler::compile(const wchar_t *file, const char *entryPoint, const char *target,
+                                                      const D3D_SHADER_MACRO *defines, ID3DBlob **shaderBlob,
+                                                      ID3DBlob **errorBlob)
+{
 
     std::wstring fullPath = std::wstring(config::SHADER_PATH) + file;
 
-    HRESULT hr = D3DCompileFromFile(
-        fullPath.c_str(),
-        defines,
-        D3D_COMPILE_STANDARD_FILE_INCLUDE,
-        entryPoint,
-        target,
-        D3DCOMPILE_ENABLE_STRICTNESS,
-        0,
-        shaderBlob,
-        errorBlob
-    );
+    HRESULT hr = D3DCompileFromFile(fullPath.c_str(), defines, D3D_COMPILE_STANDARD_FILE_INCLUDE, entryPoint, target,
+                                    D3DCOMPILE_ENABLE_STRICTNESS, 0, shaderBlob, errorBlob);
 
     return hr;
 }
 
-std::vector<D3D11_INPUT_ELEMENT_DESC> ashenvale::renderer::shader_compiler::get_input_layout(ID3D11ShaderReflection* reflection)
+std::vector<D3D11_INPUT_ELEMENT_DESC> ashenvale::renderer::shader_compiler::get_input_layout(
+    ID3D11ShaderReflection *reflection)
 {
-    D3D11_SHADER_DESC shaderDesc {};
+    D3D11_SHADER_DESC shaderDesc{};
     reflection->GetDesc(&shaderDesc);
     std::vector<D3D11_INPUT_ELEMENT_DESC> inputLayout(shaderDesc.InputParameters);
 
     for (unsigned i = 0; i < shaderDesc.InputParameters; ++i)
     {
-        D3D11_SIGNATURE_PARAMETER_DESC paramDesc {};
+        D3D11_SIGNATURE_PARAMETER_DESC paramDesc{};
         reflection->GetInputParameterDesc(i, &paramDesc);
 
         D3D11_INPUT_ELEMENT_DESC elementDesc = {};
@@ -43,16 +36,20 @@ std::vector<D3D11_INPUT_ELEMENT_DESC> ashenvale::renderer::shader_compiler::get_
         switch (paramDesc.ComponentType)
         {
         case D3D_REGISTER_COMPONENT_FLOAT32:
-            if (paramDesc.Mask == 1) {
+            if (paramDesc.Mask == 1)
+            {
                 elementDesc.Format = DXGI_FORMAT_R32_FLOAT;
             }
-            else if (paramDesc.Mask == 3) {
+            else if (paramDesc.Mask == 3)
+            {
                 elementDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
             }
-            else if (paramDesc.Mask == 7) {
+            else if (paramDesc.Mask == 7)
+            {
                 elementDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
             }
-            else if (paramDesc.Mask == 15) {
+            else if (paramDesc.Mask == 15)
+            {
                 elementDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
             }
             break;

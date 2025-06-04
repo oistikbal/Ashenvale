@@ -1,21 +1,21 @@
-#include <d3d11_4.h>
 #include <DirectXMath.h>
+#include <d3d11_4.h>
 
-#include "renderer/renderer.h"
-#include "profiler/profiler.h"
-#include "renderer/device.h"
-#include "renderer/shader_compiler.h"
-#include "editor/editor.h"
-#include "renderer/swapchain.h"
-#include "render_graph.h"
 #include "camera.h"
+#include "editor/editor.h"
+#include "profiler/profiler.h"
+#include "render_graph.h"
+#include "renderer/device.h"
+#include "renderer/renderer.h"
+#include "renderer/shader_compiler.h"
+#include "renderer/swapchain.h"
 
 using namespace winrt;
 
 void ashenvale::renderer::initialize()
 {
     PIX_SCOPED_EVENT("renderer.initialize")
- 
+
     renderer::camera::initialize();
     render_graph::initialize();
 }
@@ -73,7 +73,8 @@ void ashenvale::renderer::resize_viewport(int width, int height)
     srvDesc.Texture2D.MostDetailedMip = 0;
     srvDesc.Texture2D.MipLevels = 1;
 
-    renderer::device::g_device->CreateShaderResourceView(g_viewportDepthStencil.get(), &srvDesc, g_viewportDepthSRV.put());
+    renderer::device::g_device->CreateShaderResourceView(g_viewportDepthStencil.get(), &srvDesc,
+                                                         g_viewportDepthSRV.put());
 
     g_viewportViewport = {};
     g_viewportViewport.Width = static_cast<float>(width);

@@ -4,9 +4,8 @@ using namespace DirectX;
 
 void ashenvale::renderer::camera::initialize()
 {
-	g_position = { 0.0f, 0.0f, -0.32f };
-	g_rotation = { 0.0f, 0.0f, 0.0f };
-
+    g_position = {0.0f, 0.0f, -0.32f};
+    g_rotation = {0.0f, 0.0f, 0.0f};
 
     XMVECTOR eye = XMLoadFloat3(&g_position);
     XMVECTOR forward = XMVectorSet(0, 0, 1, 0);
@@ -19,7 +18,7 @@ void ashenvale::renderer::camera::update(float fovY, float aspectRatio, float ne
 {
     XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(g_rotation.x, g_rotation.y, g_rotation.z);
 
-    XMVECTOR forward = XMVector3TransformNormal(XMVectorSet(0, 0, 1, 0),rotationMatrix);
+    XMVECTOR forward = XMVector3TransformNormal(XMVectorSet(0, 0, 1, 0), rotationMatrix);
 
     XMVECTOR eye = XMLoadFloat3(&g_position);
     XMVECTOR up = XMVectorSet(0, 1, 0, 0);

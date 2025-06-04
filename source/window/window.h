@@ -1,14 +1,14 @@
 #pragma once
 
-#include <wtypes.h>
+#include <windows.h>
 
 namespace ashenvale::window
 {
-	inline HWND g_hwnd = nullptr;
+inline HWND g_hwnd = nullptr;
 }
 
 namespace ashenvale::window
 {
-	bool initialize(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow);
-	void run();
-}
+bool initialize(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow);
+void run();
+} // namespace ashenvale::window

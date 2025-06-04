@@ -1,29 +1,30 @@
 #include <imgui.h>
-#include <imgui/backends/imgui_impl_win32.h>
 #include <imgui/backends/imgui_impl_dx11.h>
 #include <imgui/backends/imgui_impl_win32.cpp>
+#include <imgui/backends/imgui_impl_win32.h>
 
-#include "editor.h"
-#include "window/window.h"
-#include "renderer/device.h"
-#include "profiler/profiler.h"
-#include "renderer/renderer.h"
-#include "editor/viewport.h"
 #include "console.h"
+#include "editor.h"
+#include "editor/viewport.h"
+#include "profiler/profiler.h"
+#include "renderer/device.h"
+#include "renderer/renderer.h"
+#include "window/window.h"
 
 bool ashenvale::editor::initialize()
 {
     PIX_SCOPED_EVENT("editor.initialize")
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO &io = ImGui::GetIO();
+    (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DockingEnable;
 
     ImGui_ImplWin32_Init(ashenvale::window::g_hwnd);
     ImGui_ImplDX11_Init(ashenvale::renderer::device::g_device.get(), ashenvale::renderer::device::g_context.get());
 
-    ImGuiStyle& style = ImGui::GetStyle();
-    ImVec4* colors = style.Colors;
+    ImGuiStyle &style = ImGui::GetStyle();
+    ImVec4 *colors = style.Colors;
 
     colors[ImGuiCol_Text] = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
     colors[ImGuiCol_TextDisabled] = ImVec4(0.42f, 0.42f, 0.42f, 1.00f);
@@ -109,7 +110,6 @@ bool ashenvale::editor::initialize()
     style.ScrollbarSize = 14;
     style.GrabMinSize = 10;
 
-
     ashenvale::editor::console::initialize();
 
     return true;
@@ -122,18 +122,22 @@ void ashenvale::editor::render()
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
             ImGui::MenuItem("Empty");
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Assets")) {
+        if (ImGui::BeginMenu("Assets"))
+        {
             ImGui::MenuItem("Empty");
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Windows")) {
+        if (ImGui::BeginMenu("Windows"))
+        {
             ImGui::EndMenu();
         }
 

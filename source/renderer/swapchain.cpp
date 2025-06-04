@@ -1,8 +1,8 @@
 #include "renderer/swapchain.h"
-#include "renderer/device.h"
-#include "window/window.h"
 #include "profiler/profiler.h"
 #include "renderer.h"
+#include "renderer/device.h"
+#include "window/window.h"
 
 using namespace winrt;
 
@@ -21,8 +21,9 @@ void ashenvale::renderer::swapchain::create(int width, int height)
     swapChainDesc.Flags = 0;
 
     com_ptr<IDXGISwapChain1> tempSwapchain;
-    ashenvale::renderer::device::g_factory->CreateSwapChainForHwnd(
-        ashenvale::renderer::device::g_device.get(), ashenvale::window::g_hwnd, &swapChainDesc, nullptr, nullptr, tempSwapchain.put());
+    ashenvale::renderer::device::g_factory->CreateSwapChainForHwnd(ashenvale::renderer::device::g_device.get(),
+                                                                   ashenvale::window::g_hwnd, &swapChainDesc, nullptr,
+                                                                   nullptr, tempSwapchain.put());
 
     tempSwapchain.as(g_baseSwapchain);
     tempSwapchain.as(g_swapChain);
@@ -50,7 +51,6 @@ void ashenvale::renderer::swapchain::resize(int width, int height)
 
     g_renderTargetView = nullptr;
     g_baseRTV = nullptr;
-
 
     g_swapChain->ResizeBuffers(2, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
 
