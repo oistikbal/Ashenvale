@@ -9,6 +9,7 @@
 #include "render_passes/editor_pass.h"
 #include "render_passes/present_pass.h"
 #include "render_passes/debug_depth_pass.h"
+#include "render_passes/debug_wireframe_pass.h"
 
 using namespace winrt;
 
@@ -19,6 +20,7 @@ namespace
     ashenvale::renderer::render_pass::render_pass_info g_editorPassInfo = {};
     ashenvale::renderer::render_pass::render_pass_info g_presentPassInfo = {};
     ashenvale::renderer::render_pass::render_pass_info g_debugDepthPassInfo = {};
+    ashenvale::renderer::render_pass::render_pass_info g_debugWireframePassInfo = {};
 }
 
 void ashenvale::renderer::render_pass::initialize()
@@ -28,6 +30,7 @@ void ashenvale::renderer::render_pass::initialize()
 	editor::initialize();
 	present::initialize();
 	debug_depth::initialize();
+	debug_wireframe::initialize();
 
 	resize();
 }
@@ -71,6 +74,12 @@ void ashenvale::renderer::render_pass::resize()
 	debugDepthCtx.rtv = renderer::g_viewportRTV.get();
 	debugDepthCtx.viewport = renderer::g_viewportViewport;
 	g_debugDepthPassInfo.context.debug_depth = debugDepthCtx;
+
+	g_debugWireframePassInfo.execute = debug_wireframe::execute;
+	debug_wireframe_pass_context debugWireframeCtx = {};
+	debugWireframeCtx.rtv = renderer::g_viewportRTV.get();
+	debugWireframeCtx.dsv = renderer::g_viewportDSV.get();
+	g_debugWireframePassInfo.context.debug_wireframe = debugWireframeCtx;
 }
 
 void ashenvale::renderer::render_pass::bind_pso(const render_pass_pso& pso)
@@ -106,8 +115,12 @@ void ashenvale::renderer::render_pass::render()
 		g_debugDepthPassInfo.execute(g_debugDepthPassInfo.context);
 		break;
 	case ashenvale::renderer::render_graph::debug_view::wireframe:
+		g_debugWireframePassInfo.context.debug_wireframe.clear = true;
+		g_debugWireframePassInfo.execute(g_debugWireframePassInfo.context);
 		break;
 	case ashenvale::renderer::render_graph::debug_view::wireframe_lit:
+		g_debugWireframePassInfo.context.debug_wireframe.clear = false;
+		g_debugWireframePassInfo.execute(g_debugWireframePassInfo.context);
 		break;
 	}
 

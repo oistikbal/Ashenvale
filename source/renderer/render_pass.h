@@ -54,15 +54,9 @@ namespace ashenvale::renderer::render_pass
 	{
 		ID3D11RenderTargetView* rtv;
 		ID3D11DepthStencilView* dsv;
-		ID3D11RasterizerState* rasterizerState;
+		bool clear;
 	};
 
-	struct debug_wireframe_shaded_pass_context
-	{
-		ID3D11RenderTargetView* rtvs;
-		ID3D11DepthStencilView* dsv;
-		ID3D11RasterizerState* rasterizerState;
-	};
 
 	union render_pass_context
 	{
@@ -72,7 +66,6 @@ namespace ashenvale::renderer::render_pass
 		present_pass_context present;
 		debug_depth_pass_context debug_depth;
 		debug_wireframe_pass_context debug_wireframe;
-		debug_wireframe_shaded_pass_context debug_shaded;
 	};
 
 	using render_pass_execute = void(*)(const render_pass_context&);

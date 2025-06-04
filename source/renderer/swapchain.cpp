@@ -2,6 +2,7 @@
 #include "renderer/device.h"
 #include "window/window.h"
 #include "profiler/profiler.h"
+#include "renderer.h"
 
 using namespace winrt;
 
@@ -66,4 +67,6 @@ void ashenvale::renderer::swapchain::resize(int width, int height)
     g_viewport.MaxDepth = 1.0f;
     g_viewport.TopLeftX = 0.0f;
     g_viewport.TopLeftY = 0.0f;
+
+    renderer::resize_viewport(width, height);
 }

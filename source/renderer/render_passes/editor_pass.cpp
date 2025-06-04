@@ -19,7 +19,6 @@ void ashenvale::renderer::render_pass::editor::execute(const render_pass_context
 
 	ID3D11RenderTargetView* const rtvs[] = { context.editor.rtv };
 	ashenvale::renderer::device::g_context->OMSetRenderTargets(1, rtvs, nullptr);
-	ashenvale::renderer::device::g_context->ClearRenderTargetView(context.editor.rtv, context.editor.clearColor);
 	ashenvale::renderer::device::g_context->RSSetViewports(1, &context.editor.viewport);
 	ashenvale::editor::render();
 }
