@@ -12,6 +12,17 @@ void ashenvale::editor::settings::render()
     bool visible = ImGui::Begin("Settings", &g_isOpen);
     if (visible)
     {
+        if (ImGui::CollapsingHeader("Renderer", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            static int currentItem = 0;
+            const char *items[] = {"Forward", "Deferred"};
+
+            ImGui::Combo("Render Path", &currentItem, items, IM_ARRAYSIZE(items));
+
+            renderer::render_graph::g_renderPath =
+                static_cast<ashenvale::renderer::render_graph::render_path>(static_cast<uint8_t>(currentItem));
+        }
+
         if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_DefaultOpen))
         {
             static int currentItem = 0;

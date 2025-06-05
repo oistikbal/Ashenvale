@@ -18,6 +18,37 @@ namespace ashenvale::renderer::render_pass
 		D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	};
 
+	struct resource_definition
+    {
+        enum class input_type
+        {
+            constant,
+            srv,
+            sampler
+        };
+        input_type type;
+        UINT slot;
+    };
+
+	struct resource_bindings
+    {
+        resource_definition vsResources[160];
+        resource_definition psResources[160];
+        int vsCount = 0;
+        int psCount = 0;
+    };
+
+	struct bound_resources
+    {
+        ID3D11Buffer *vsCBs[16] = {nullptr};
+        ID3D11ShaderResourceView *vsSRVs[128] = {nullptr};
+        ID3D11SamplerState *vsSamplers[16] = {nullptr};
+
+        ID3D11Buffer *psCBs[16] = {nullptr};
+        ID3D11ShaderResourceView *psSRVs[128] = {nullptr};
+        ID3D11SamplerState *psSamplers[16] = {nullptr};
+    };
+
 	struct clear_pass_context
 	{
 		ID3D11RenderTargetView* rtv;
@@ -84,5 +115,6 @@ namespace ashenvale::renderer::render_pass
 	void initialize();
 	void resize();
 	void bind_pso(const render_pass_pso& pso);
+    void bind_resources(const resource_bindings &defs, const bound_resources &res);
 	void render();
 }

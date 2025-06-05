@@ -93,6 +93,43 @@ void ashenvale::renderer::render_pass::bind_pso(const render_pass_pso &pso)
     renderer::device::g_context->IASetPrimitiveTopology(pso.topology);
 }
 
+void ashenvale::renderer::render_pass::bind_resources(const resource_bindings &defs, const bound_resources &res)
+{
+    for (size_t i = 0; i < defs.vsCount; ++i)
+    {
+        const auto &def = defs.vsResources[i];
+        switch (def.type)
+        {
+        case resource_definition::input_type::constant:
+            renderer::device::g_context->VSSetConstantBuffers(def.slot, 1, &res.vsCBs[def.slot]);
+            break;
+        case resource_definition::input_type::srv:
+            renderer::device::g_context->VSSetShaderResources(def.slot, 1, &res.vsSRVs[def.slot]);
+            break;
+        case resource_definition::input_type::sampler:
+            renderer::device::g_context->VSSetSamplers(def.slot, 1, &res.vsSamplers[def.slot]);
+            break;
+        }
+    }
+
+    for (size_t i = 0; i < defs.psCount; ++i)
+    {
+        const auto &def = defs.psResources[i];
+        switch (def.type)
+        {
+        case resource_definition::input_type::constant:
+            renderer::device::g_context->PSSetConstantBuffers(def.slot, 1, &res.psCBs[def.slot]);
+            break;
+        case resource_definition::input_type::srv:
+            renderer::device::g_context->PSSetShaderResources(def.slot, 1, &res.psSRVs[def.slot]);
+            break;
+        case resource_definition::input_type::sampler:
+            renderer::device::g_context->PSSetSamplers(def.slot, 1, &res.psSamplers[def.slot]);
+            break;
+        }
+    }
+}
+
 void ashenvale::renderer::render_pass::render()
 {
     switch (render_graph::g_renderPath)

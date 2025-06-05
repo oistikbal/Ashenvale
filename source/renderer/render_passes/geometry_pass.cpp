@@ -18,6 +18,8 @@ struct Vertex
 namespace
 {
 ashenvale::renderer::render_pass::render_pass_pso g_pso;
+ashenvale::renderer::render_pass::bound_resources g_geometryResources;
+ashenvale::renderer::render_pass::resource_bindings g_geometryBindings;
 
 com_ptr<ID3D11Buffer> g_vertexBuffer;
 com_ptr<ID3D11Buffer> g_indexBuffer;
@@ -84,6 +86,12 @@ void ashenvale::renderer::render_pass::geometry::initialize()
     renderer::device::g_device->CreateInputLayout(layouts.data(), layouts.size(), vsBlob->GetBufferPointer(),
                                                   vsBlob->GetBufferSize(), g_inputLayout.put());
 
+    renderer::shader_compiler::reflect_shader_resources(vsBlob.get(), g_geometryBindings.vsResources,
+                                                        g_geometryBindings.vsCount);
+
+    renderer::shader_compiler::reflect_shader_resources(psBlob.get(), g_geometryBindings.psResources,
+                                                        g_geometryBindings.psCount);
+
     D3D11_BUFFER_DESC cameraBufferDesc = {};
     cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
     cameraBufferDesc.ByteWidth = sizeof(DirectX::XMFLOAT4X4);
@@ -119,6 +127,8 @@ void ashenvale::renderer::render_pass::geometry::initialize()
     g_pso.vs = g_vertexShader.get();
     g_pso.topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     g_pso.rs = g_rasterizer.get();
+
+    g_geometryResources.vsCBs[0] = g_cameraBuffer.get();
 }
 
 void ashenvale::renderer::render_pass::geometry::execute(const render_pass_context &context)
@@ -146,8 +156,7 @@ void ashenvale::renderer::render_pass::geometry::execute(const render_pass_conte
     memcpy(mappedResource.pData, &viewProjection, sizeof(DirectX::XMFLOAT4X4));
     ashenvale::renderer::device::g_context->Unmap(g_cameraBuffer.get(), 0);
 
-    ID3D11Buffer *const pixelBuffers[] = {g_cameraBuffer.get()};
-    ashenvale::renderer::device::g_context->VSSetConstantBuffers(0, 1, pixelBuffers);
+    bind_resources(g_geometryBindings, g_geometryResources);
 
     ashenvale::renderer::device::g_context->DrawIndexed(3, 0, 0);
 }
