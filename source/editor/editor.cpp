@@ -5,6 +5,7 @@
 
 #include "console.h"
 #include "editor.h"
+#include "editor/settings.h"
 #include "editor/viewport.h"
 #include "profiler/profiler.h"
 #include "renderer/device.h"
@@ -138,6 +139,13 @@ void ashenvale::editor::render()
 
         if (ImGui::BeginMenu("Windows"))
         {
+            if (ImGui::MenuItem("Viewport"))
+                viewport::g_isOpen = true;
+            if (ImGui::MenuItem("Settings"))
+                settings::g_isOpen = true;
+            if (ImGui::MenuItem("Console"))
+                console::g_isOpen = true;
+
             ImGui::EndMenu();
         }
 
@@ -148,6 +156,7 @@ void ashenvale::editor::render()
 
     ashenvale::editor::viewport::render();
     ashenvale::editor::console::render();
+    ashenvale::editor::settings::render();
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

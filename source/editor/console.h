@@ -2,6 +2,11 @@
 
 namespace ashenvale::editor::console
 {
-	void initialize();
-	void render();
-}
+inline bool g_isOpen = true;
+} // namespace ashenvale::editor::console
+
+namespace ashenvale::editor::console
+{
+void initialize();
+void render();
+} // namespace ashenvale::editor::console
