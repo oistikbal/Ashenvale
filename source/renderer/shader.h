@@ -27,6 +27,7 @@ struct shader
 inline shader g_triangleShader;
 inline shader g_quadShader;
 inline shader g_pbrShader;
+inline shader g_wireframeShader;
 } // namespace ashenvale::renderer::shader
 
 namespace ashenvale::renderer::shader

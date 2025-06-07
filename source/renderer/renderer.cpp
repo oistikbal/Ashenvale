@@ -90,6 +90,6 @@ void ashenvale::renderer::resize_viewport(int width, int height)
 void ashenvale::renderer::render()
 {
     PIX_SCOPED_EVENT("renderer.render")
-    renderer::camera::update(90.0f, g_viewportViewport.Width / g_viewportViewport.Height, 0.1f, 1000.0f);
+    renderer::camera::update(DirectX::XM_PIDIV2, g_viewportViewport.Width / g_viewportViewport.Height, 0.1f, 1000.0f);
     render_graph::render();
 }

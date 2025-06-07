@@ -5,16 +5,16 @@
 
 namespace
 {
-ashenvale::renderer::render_pass::render_pass_pso g_pso;
+
 }
 
 void ashenvale::renderer::render_pass::present::initialize()
 {
-    g_pso = {};
+
 }
 
 void ashenvale::renderer::render_pass::present::execute(const render_pass_context &context)
 {
-    bind_pso(g_pso);
+    reset_pipeline();
     swapchain::g_swapChain->Present(1, 0);
 }

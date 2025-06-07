@@ -7,16 +7,6 @@
 
 namespace ashenvale::renderer::render_pass
 {
-struct render_pass_pso
-{
-    ID3D11InputLayout *inputLayout = nullptr;
-    ID3D11VertexShader *vs = nullptr;
-    ID3D11PixelShader *ps = nullptr;
-    ID3D11RasterizerState *rs = nullptr;
-    ID3D11BlendState *bs = nullptr;
-    ID3D11DepthStencilState *dss = nullptr;
-    D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-};
 
 struct clear_pass_context
 {
@@ -83,6 +73,6 @@ namespace ashenvale::renderer::render_pass
 {
 void initialize();
 void resize();
-void bind_pso(const render_pass_pso &pso);
+void reset_pipeline();
 void render();
 } // namespace ashenvale::renderer::render_pass

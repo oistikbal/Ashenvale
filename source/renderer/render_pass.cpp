@@ -82,15 +82,15 @@ void ashenvale::renderer::render_pass::resize()
     g_debugWireframePassInfo.context.debug_wireframe = debugWireframeCtx;
 }
 
-void ashenvale::renderer::render_pass::bind_pso(const render_pass_pso &pso)
+void ashenvale::renderer::render_pass::reset_pipeline()
 {
-    renderer::device::g_context->IASetInputLayout(pso.inputLayout);
-    renderer::device::g_context->VSSetShader(pso.vs, nullptr, 0);
-    renderer::device::g_context->PSSetShader(pso.ps, nullptr, 0);
-    renderer::device::g_context->RSSetState(pso.rs);
-    renderer::device::g_context->OMSetBlendState(pso.bs, nullptr, 0xffffffff);
-    renderer::device::g_context->OMSetDepthStencilState(pso.dss, 0);
-    renderer::device::g_context->IASetPrimitiveTopology(pso.topology);
+    renderer::device::g_context->IASetInputLayout(nullptr);
+    renderer::device::g_context->VSSetShader(nullptr, nullptr, 0);
+    renderer::device::g_context->PSSetShader(nullptr, nullptr, 0);
+    renderer::device::g_context->RSSetState(nullptr);
+    renderer::device::g_context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+    renderer::device::g_context->OMSetDepthStencilState(nullptr, 0);
+    renderer::device::g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 void ashenvale::renderer::render_pass::render()

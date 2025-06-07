@@ -1,17 +1,12 @@
 #include "debug_depth_pass.h"
 #include "renderer/device.h"
 #include "renderer/renderer.h"
-#include "renderer/shader_compiler.h"
+#include "renderer/shader.h"
 
 using namespace winrt;
 
 namespace
 {
-ashenvale::renderer::render_pass::render_pass_pso g_pso;
-
-com_ptr<ID3D11VertexShader> g_quadVS;
-com_ptr<ID3D11PixelShader> g_quadPS;
-com_ptr<ID3D11InputLayout> g_inputLayout;
 com_ptr<ID3D11RasterizerState> g_debugDepthRasterize;
 com_ptr<ID3D11DepthStencilState> g_depthStencilState;
 com_ptr<ID3D11SamplerState> g_sampler;
@@ -19,20 +14,6 @@ com_ptr<ID3D11SamplerState> g_sampler;
 
 void ashenvale::renderer::render_pass::debug_depth::initialize()
 {
-    com_ptr<ID3DBlob> errorBlob;
-    com_ptr<ID3DBlob> vsBlob;
-    com_ptr<ID3DBlob> psBlob;
-
-    renderer::shader_compiler::compile(L"quad_vs.hlsl", "main", "vs_5_0", nullptr, vsBlob.put(), errorBlob.put());
-
-    renderer::device::g_device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr,
-                                                   g_quadVS.put());
-
-    renderer::shader_compiler::compile(L"quad_ps.hlsl", "main", "ps_5_0", nullptr, psBlob.put(), errorBlob.put());
-
-    renderer::device::g_device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr,
-                                                  g_quadPS.put());
-
     D3D11_RASTERIZER_DESC rasterDesc = {};
     rasterDesc.FillMode = D3D11_FILL_SOLID;
     rasterDesc.CullMode = D3D11_CULL_NONE;
@@ -52,23 +33,25 @@ void ashenvale::renderer::render_pass::debug_depth::initialize()
     sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     renderer::device::g_device->CreateSamplerState(&sampDesc, g_sampler.put());
 
-    g_pso = {};
-    g_pso.topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
-    g_pso.ps = g_quadPS.get();
-    g_pso.vs = g_quadVS.get();
-    g_pso.dss = g_depthStencilState.get();
-    g_pso.rs = g_debugDepthRasterize.get();
 }
 
 void ashenvale::renderer::render_pass::debug_depth::execute(const render_pass_context &context)
 {
-    bind_pso(g_pso);
+    reset_pipeline();
 
     const float color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     ID3D11RenderTargetView *const viewportRtvs[] = {context.debug_depth.rtv};
+    ashenvale::renderer::device::g_context->IASetInputLayout(shader::g_quadShader.inputLayout.get());
+    ashenvale::renderer::device::g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     ashenvale::renderer::device::g_context->OMSetRenderTargets(1, viewportRtvs, nullptr);
     ashenvale::renderer::device::g_context->ClearRenderTargetView(context.debug_depth.rtv, color);
     ashenvale::renderer::device::g_context->RSSetViewports(1, &context.debug_depth.viewport);
+    ashenvale::renderer::device::g_context->RSSetState(g_debugDepthRasterize.get());
+    ashenvale::renderer::device::g_context->OMSetDepthStencilState(g_depthStencilState.get(), 0);
+
+    ashenvale::renderer::device::g_context->VSSetShader(shader::g_quadShader.vertexShader.get(), 0, 0);
+    ashenvale::renderer::device::g_context->PSSetShader(shader::g_quadShader.pixelShader.get(), 0, 0);
+
 
     ID3D11Buffer *nullBuffer = nullptr;
     UINT zero = 0;

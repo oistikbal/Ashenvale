@@ -176,6 +176,7 @@ void ashenvale::scene::load_scene(const char *path)
 
                 vertices.resize(vertexCount);
 
+
                 for (size_t k = 0; k < primitive.attributes_count; ++k)
                 {
                     const cgltf_attribute &attr = primitive.attributes[k];

@@ -12,7 +12,6 @@ using namespace winrt;
 
 namespace
 {
-ashenvale::renderer::render_pass::render_pass_pso g_pso;
 com_ptr<ID3D11Buffer> g_cameraBuffer;
 } // namespace
 
@@ -25,13 +24,11 @@ void ashenvale::renderer::render_pass::geometry::initialize()
     cameraBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
     renderer::device::g_device->CreateBuffer(&cameraBufferDesc, nullptr, g_cameraBuffer.put());
-
-    g_pso = {};
 }
 
 void ashenvale::renderer::render_pass::geometry::execute(const render_pass_context &context)
 {
-    bind_pso(g_pso);
+    reset_pipeline();
 
     ID3D11RenderTargetView *const rtvs[] = {context.geometry.rtv};
     ashenvale::renderer::device::g_context->OMSetRenderTargets(1, rtvs, context.geometry.dsv);
