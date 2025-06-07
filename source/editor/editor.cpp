@@ -2,15 +2,19 @@
 #include <imgui/backends/imgui_impl_dx11.h>
 #include <imgui/backends/imgui_impl_win32.cpp>
 #include <imgui/backends/imgui_impl_win32.h>
+#include <Windows.h>
+#include <commdlg.h>
 
 #include "console.h"
 #include "editor.h"
 #include "editor/settings.h"
 #include "editor/viewport.h"
+#include "editor/scene.h"
 #include "profiler/profiler.h"
 #include "renderer/device.h"
 #include "renderer/renderer.h"
 #include "window/window.h"
+#include "scene/scene.h"
 
 bool ashenvale::editor::initialize()
 {
@@ -127,13 +131,27 @@ void ashenvale::editor::render()
     {
         if (ImGui::BeginMenu("File"))
         {
-            ImGui::MenuItem("Empty");
-            ImGui::EndMenu();
-        }
+            if(ImGui::MenuItem("Load glTF Scene"))
+            {
+               char filename[MAX_PATH] = {};
 
-        if (ImGui::BeginMenu("Assets"))
-        {
-            ImGui::MenuItem("Empty");
+                OPENFILENAME ofn = {};
+                ofn.lStructSize = sizeof(ofn);
+                ofn.lpstrFilter = "glTF Files\0*.gltf;*.glb\0All Files\0*.*\0";
+                ofn.lpstrFile = filename;
+                ofn.nMaxFile = MAX_PATH;
+                ofn.Flags = OFN_FILEMUSTEXIST;
+                ofn.hwndOwner = window::g_hwnd;
+                if (GetOpenFileNameA(&ofn))
+                {
+                    ashenvale::scene::load_scene(filename);
+                }
+            }
+            if (ImGui::MenuItem("Close Scene"))
+            {
+                ashenvale::scene::close_scene();
+            }
+            
             ImGui::EndMenu();
         }
 
@@ -145,6 +163,8 @@ void ashenvale::editor::render()
                 settings::g_isOpen = true;
             if (ImGui::MenuItem("Console"))
                 console::g_isOpen = true;
+            if (ImGui::MenuItem("Scene"))
+                scene::g_isOpen = true;
 
             ImGui::EndMenu();
         }
@@ -157,6 +177,7 @@ void ashenvale::editor::render()
     ashenvale::editor::viewport::render();
     ashenvale::editor::console::render();
     ashenvale::editor::settings::render();
+    ashenvale::editor::scene::render();
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

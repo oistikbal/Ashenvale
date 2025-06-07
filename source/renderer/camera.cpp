@@ -4,7 +4,7 @@ using namespace DirectX;
 
 void ashenvale::renderer::camera::initialize()
 {
-    g_position = {0.0f, 0.0f, -0.32f};
+    g_position = {0.0f, 0.0f, -1.0f};
     g_rotation = {0.0f, 0.0f, 0.0f};
 
     XMVECTOR eye = XMLoadFloat3(&g_position);

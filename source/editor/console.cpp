@@ -10,8 +10,7 @@ void ashenvale::editor::console::initialize()
     D3D11_INFO_QUEUE_FILTER filter = {};
 
     D3D11_MESSAGE_SEVERITY severities[] = {D3D11_MESSAGE_SEVERITY_ERROR, D3D11_MESSAGE_SEVERITY_WARNING,
-                                           D3D11_MESSAGE_SEVERITY_CORRUPTION, D3D11_MESSAGE_SEVERITY_MESSAGE,
-                                           D3D11_MESSAGE_SEVERITY_INFO};
+                                           D3D11_MESSAGE_SEVERITY_CORRUPTION, D3D11_MESSAGE_SEVERITY_MESSAGE};
 
     D3D11_MESSAGE_ID blockedIDs[] = {D3D11_MESSAGE_ID_OMSETRENDERTARGETS_UNBINDDELETINGOBJECT};
 

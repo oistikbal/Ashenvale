@@ -5,9 +5,9 @@
 #include "profiler/profiler.h"
 #include "renderer/device.h"
 #include "renderer/renderer.h"
-#include "renderer/shader_compiler.h"
 #include "renderer/swapchain.h"
 #include "window/window.h"
+#include "shader.h"
 
 using namespace winrt;
 
@@ -28,6 +28,8 @@ bool ashenvale::renderer::device::initialize()
     tempDevice.as(g_device);
 
     tempContext.as(g_context);
+
+    g_factory->MakeWindowAssociation(window::g_hwnd, DXGI_MWA_NO_ALT_ENTER);
 
     com_ptr<IDXGIAdapter1> adapter;
     g_factory->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&adapter));
@@ -68,6 +70,7 @@ bool ashenvale::renderer::device::initialize()
     int renderHeight = clientRect.bottom - clientRect.top;
 
     swapchain::create(renderWidth, renderHeight);
+    shader::initialize();
     renderer::initialize();
 
     resize_viewport(renderWidth, renderHeight);

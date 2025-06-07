@@ -50,6 +50,7 @@ void compile(ashenvale::renderer::shader::shader &shader, const wchar_t *vsPath,
     }
 
     D3DReflect(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), IID_PPV_ARGS(reflection.put()));
+    reflection->GetDesc(&shaderDesc);
     for (UINT i = 0; i < shaderDesc.BoundResources; ++i)
     {
         D3D11_SHADER_INPUT_BIND_DESC desc = {};
@@ -70,4 +71,5 @@ void ashenvale::renderer::shader::initialize()
 {
     compile(g_triangleShader, L"vs.hlsl", L"ps.hlsl");
     compile(g_quadShader, L"quad_vs.hlsl", L"quad_ps.hlsl");
+    compile(g_pbrShader, L"pbr_vs.hlsl", L"pbr_ps.hlsl");
 }

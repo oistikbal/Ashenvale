@@ -34,5 +34,5 @@ void ashenvale::editor::viewport::render()
         ImGui::Image((ImTextureID)(intptr_t)ashenvale::renderer::g_viewportSRV.get(), ImVec2(newWidth, newHeight));
     }
 
-    ImGui::End(); // Always call End, even if the window is collapsed
+    ImGui::End();
 }
