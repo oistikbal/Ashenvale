@@ -15,6 +15,7 @@
 #include "renderer/renderer.h"
 #include "window/window.h"
 #include "scene/scene.h"
+#include "inspector.h"
 
 bool ashenvale::editor::initialize()
 {
@@ -165,6 +166,8 @@ void ashenvale::editor::render()
                 console::g_isOpen = true;
             if (ImGui::MenuItem("Scene"))
                 scene::g_isOpen = true;
+            if (ImGui::MenuItem("Inspector"))
+                inspector::g_isOpen = true;
 
             ImGui::EndMenu();
         }
@@ -178,6 +181,7 @@ void ashenvale::editor::render()
     ashenvale::editor::console::render();
     ashenvale::editor::settings::render();
     ashenvale::editor::scene::render();
+    ashenvale::editor::inspector::render();
 
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

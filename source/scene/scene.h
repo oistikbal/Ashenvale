@@ -56,9 +56,20 @@ struct renderable
     uint32_t materialIndex;
 };
 
-inline std::vector<ashenvale::scene::renderable> g_renderables;
+struct scene_node
+{
+    std::string name;
+    std::vector<ashenvale::scene::renderable> renderables;
+    DirectX::XMFLOAT3 translation = {0.0f, 0.0f, 0.0f};
+    DirectX::XMFLOAT4 rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+    DirectX::XMFLOAT3 scale = {1.0f, 1.0f, 1.0f};
+
+    DirectX::XMMATRIX worldMatrix;
+};
+
 inline std::vector<ashenvale::scene::mesh> g_meshes;
 inline std::vector<ashenvale::scene::material> g_materials;
+inline std::vector<ashenvale::scene::scene_node> g_nodes;
 } // namespace ashenvale::scene
 
 namespace ashenvale::scene
@@ -71,4 +82,5 @@ void material_set_sampler(material &mat, const std::string &name, winrt::com_ptr
 material_resource *material_find_resource(material &mat, const std::string &name);
 const material_resource *material_find_resource(const material &mat, const std::string &name);
 void material_bind(const material &mat, ID3D11DeviceContext *context);
+void update_world_matrix(ashenvale::scene::scene_node &node);
 } // namespace ashenvale::scene

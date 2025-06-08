@@ -62,41 +62,45 @@ void ashenvale::renderer::render_pass::debug_wireframe::execute(const render_pas
     ashenvale::renderer::device::g_context->OMSetRenderTargets(1, rtvs, context.geometry.dsv);
     ashenvale::renderer::device::g_context->RSSetViewports(1, &ashenvale::renderer::g_viewportViewport);
 
-    ashenvale::renderer::camera::mvp_buffer mvp = {};
-    DirectX::XMStoreFloat4x4(&mvp.world, DirectX::XMMatrixTranspose(DirectX::XMMatrixIdentity()));
-    DirectX::XMStoreFloat4x4(&mvp.view, DirectX::XMMatrixTranspose(ashenvale::renderer::camera::g_viewMatrix));
-    DirectX::XMStoreFloat4x4(&mvp.projection,
-                             DirectX::XMMatrixTranspose(ashenvale::renderer::camera::g_projectionMatrix));
-
-    D3D11_MAPPED_SUBRESOURCE mappedResource = {};
-
-    ashenvale::renderer::device::g_context->Map(g_cameraBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-    memcpy(mappedResource.pData, &mvp, sizeof(ashenvale::renderer::camera::mvp_buffer));
-    ashenvale::renderer::device::g_context->Unmap(g_cameraBuffer.get(), 0);
-
-    ID3D11Buffer *const cameraBuffer[] = {g_cameraBuffer.get()};
-
     UINT stride = sizeof(ashenvale::scene::vertex);
     UINT offset = 0;
 
-    ashenvale::renderer::device::g_context->VSSetConstantBuffers(0, 1, cameraBuffer);
-    for (const auto &renderable : ashenvale::scene::g_renderables)
+    for (auto &node : ashenvale::scene::g_nodes)
     {
-        const ashenvale::scene::mesh &m = ashenvale::scene::g_meshes[renderable.meshIndex];
-        const ashenvale::scene::material &mat = ashenvale::scene::g_materials[renderable.materialIndex];
+        scene::update_world_matrix(node);
+        ashenvale::renderer::camera::mvp_buffer mvp = {};
+        DirectX::XMStoreFloat4x4(&mvp.world, DirectX::XMMatrixTranspose(node.worldMatrix));
+        DirectX::XMStoreFloat4x4(&mvp.view, DirectX::XMMatrixTranspose(ashenvale::renderer::camera::g_viewMatrix));
+        DirectX::XMStoreFloat4x4(&mvp.projection,
+                                 DirectX::XMMatrixTranspose(ashenvale::renderer::camera::g_projectionMatrix));
 
-        ashenvale::scene::material_bind(mat, ashenvale::renderer::device::g_context.get());
+        D3D11_MAPPED_SUBRESOURCE mappedResource = {};
 
-        ID3D11Buffer *const vertexBuffers[] = {m.vertexBuffer.get()};
-        ashenvale::renderer::device::g_context->IASetVertexBuffers(0, 1, vertexBuffers, &stride, &offset);
-        ashenvale::renderer::device::g_context->IASetIndexBuffer(m.indexBuffer.get(), DXGI_FORMAT_R32_UINT, 0);
-        if (!context.debug_wireframe.clear)
+        ashenvale::renderer::device::g_context->Map(g_cameraBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0,
+                                                    &mappedResource);
+        memcpy(mappedResource.pData, &mvp, sizeof(ashenvale::renderer::camera::mvp_buffer));
+        ashenvale::renderer::device::g_context->Unmap(g_cameraBuffer.get(), 0);
+
+        ID3D11Buffer *const cameraBuffer[] = {g_cameraBuffer.get()};
+
+        ashenvale::renderer::device::g_context->VSSetConstantBuffers(0, 1, cameraBuffer);
+        for (const auto &renderable : node.renderables)
         {
-            ashenvale::renderer::device::g_context->PSSetShader(shader::g_wireframeShader.pixelShader.get(), nullptr,
-                                                                0);
+            const ashenvale::scene::mesh &m = ashenvale::scene::g_meshes[renderable.meshIndex];
+            const ashenvale::scene::material &mat = ashenvale::scene::g_materials[renderable.materialIndex];
+
+            ashenvale::scene::material_bind(mat, ashenvale::renderer::device::g_context.get());
+
+            ID3D11Buffer *const vertexBuffers[] = {m.vertexBuffer.get()};
+            ashenvale::renderer::device::g_context->IASetVertexBuffers(0, 1, vertexBuffers, &stride, &offset);
+            ashenvale::renderer::device::g_context->IASetIndexBuffer(m.indexBuffer.get(), DXGI_FORMAT_R32_UINT, 0);
+            ashenvale::renderer::device::g_context->RSSetState(g_rasterizer.get());
+            if (!context.debug_wireframe.clear)
+            {
+                ashenvale::renderer::device::g_context->PSSetShader(shader::g_wireframeShader.pixelShader.get(),
+                                                                    nullptr, 0);
+            }
+            ashenvale::renderer::device::g_context->DrawIndexed(m.indexCount, 0, 0);
         }
-        ashenvale::renderer::device::g_context->RSSetState(g_rasterizer.get());
-        ashenvale::renderer::device::g_context->OMSetDepthStencilState(g_wireframeDepthState.get(), 0);
-        ashenvale::renderer::device::g_context->DrawIndexed(m.indexCount, 0, 0);
     }
 }

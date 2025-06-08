@@ -10,6 +10,8 @@
 #include <windows.h>
 #include <winrt/base.h>
 
+using namespace DirectX;
+
 namespace
 {
 
@@ -55,21 +57,21 @@ winrt::com_ptr<ID3D11ShaderResourceView> create_texture_from_gltf_image(const cg
     D3D11_TEXTURE2D_DESC desc = {};
     desc.Width = width;
     desc.Height = height;
-    desc.MipLevels = 1;
+    desc.MipLevels = 0;
     desc.ArraySize = 1;
     desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     desc.SampleDesc.Count = 1;
     desc.Usage = D3D11_USAGE_DEFAULT;
-    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;;
+    desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
     D3D11_SUBRESOURCE_DATA initData = {};
     initData.pSysMem = pixels;
     initData.SysMemPitch = width * 4;
 
     winrt::com_ptr<ID3D11Texture2D> texture;
-    HRESULT hr = ashenvale::renderer::device::g_device->CreateTexture2D(&desc, &initData, texture.put());
+    HRESULT hr = ashenvale::renderer::device::g_device->CreateTexture2D(&desc, nullptr, texture.put());
 
-    stbi_image_free(pixels);
 
     if (FAILED(hr))
     {
@@ -82,16 +84,21 @@ winrt::com_ptr<ID3D11ShaderResourceView> create_texture_from_gltf_image(const cg
     srvDesc.Format = desc.Format;
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.MipLevels = 1;
+    srvDesc.Texture2D.MipLevels = -1;
 
     winrt::com_ptr<ID3D11ShaderResourceView> srv;
     hr = ashenvale::renderer::device::g_device->CreateShaderResourceView(texture.get(), &srvDesc, srv.put());
+
 
     if (FAILED(hr))
     {
         OutputDebugStringA("Failed to create SRV for texture\n");
         return nullptr;
     }
+    
+     ashenvale::renderer::device::g_context->UpdateSubresource(texture.get(), 0, nullptr, pixels, width * 4, 0);
+     ashenvale::renderer::device::g_context->GenerateMips(srv.get());
+     stbi_image_free(pixels);
 
     return srv;
 }
@@ -137,10 +144,14 @@ winrt::com_ptr<ID3D11SamplerState> create_default_sampler()
 
     return SUCCEEDED(hr) ? sampler : nullptr;
 }
+
+
 } // namespace
 
 void ashenvale::scene::load_scene(const char *path)
 {
+    ashenvale::scene::scene_node node;
+    update_world_matrix(node);
 
     cgltf_data *data = nullptr;
     cgltf_options options = {};
@@ -148,6 +159,7 @@ void ashenvale::scene::load_scene(const char *path)
     if (cgltf_parse_file(&options, path, &data) == cgltf_result_success)
     {
         cgltf_load_buffers(&options, data, path);
+
 
         for (size_t i = 0; i < data->meshes_count; ++i)
         {
@@ -275,7 +287,7 @@ void ashenvale::scene::load_scene(const char *path)
                     materialIndex = static_cast<uint32_t>(matIdx);
                 }
 
-                g_renderables.push_back({meshIndex, materialIndex});
+                node.renderables.push_back({meshIndex, materialIndex});
             }
         }
 
@@ -328,15 +340,31 @@ void ashenvale::scene::load_scene(const char *path)
             g_materials.push_back(mat);
         }
 
+        //node.name = data->nodes[0].name;
         cgltf_free(data);
     }
+
+    g_nodes.push_back(std::move(node));
+}
+
+void ashenvale::scene::update_world_matrix(ashenvale::scene::scene_node &node)
+{
+    XMMATRIX S = XMMatrixScaling(node.scale.x, node.scale.y, node.scale.z);
+    XMMATRIX R = XMMatrixRotationQuaternion(XMLoadFloat4(&node.rotation));
+    XMMATRIX T = XMMatrixTranslation(node.translation.x, node.translation.y, node.translation.z);
+    XMMATRIX world = S * R * T;
+    node.worldMatrix = world;
 }
 
 void ashenvale::scene::close_scene()
 {
     g_meshes.clear();
     g_materials.clear();
-    g_renderables.clear();
+    for (auto &node : g_nodes)
+    {
+        node.renderables.clear();
+    }
+    g_nodes.resize(0);
 }
 
 namespace ashenvale::scene
