@@ -78,7 +78,6 @@ void compile(ashenvale::renderer::shader::shader &shader, const wchar_t *vsPath,
 
 void ashenvale::renderer::shader::initialize()
 {
-    compile(g_triangleShader, L"vs.hlsl", L"ps.hlsl");
     compile(g_quadShader, L"quad_vs.hlsl", L"quad_ps.hlsl");
     compile(g_pbrShader, L"pbr_vs.hlsl", L"pbr_ps.hlsl");
     compile(g_wireframeShader, nullptr, L"wireframe_ps.hlsl");

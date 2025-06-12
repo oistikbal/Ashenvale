@@ -7,7 +7,17 @@ struct PSInput
     float2 uv : TEXCOORD;
 };
 
+float LinearizeDepth(float depth)
+{
+    return (0.1f * 100.0f) / (100.0f - depth * (100.0f - 0.1));
+}
+
 float4 main(PSInput input) : SV_Target
 {
-    return g_depthTexture.Sample(g_sampler, input.uv);
+    float depth = g_depthTexture.Sample(g_sampler, input.uv);
+    float linearDepth = LinearizeDepth(depth);
+
+    float normalized = (linearDepth - 0.1f) / (100.0f - 0.1f);
+
+    return float4(normalized, 0.0f, 0.0f, 1.0f);
 }

@@ -24,7 +24,6 @@ struct shader
     std::vector<resource_binding> psBindings;
 };
 
-inline shader g_triangleShader;
 inline shader g_quadShader;
 inline shader g_pbrShader;
 inline shader g_wireframeShader;
