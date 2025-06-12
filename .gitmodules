@@ -2,3 +2,6 @@
 	path = thirdparty/imgui
 	url = git@github.com:ocornut/imgui.git
 	branch = docking
+[submodule "thirdparty/flecs"]
+	path = thirdparty/flecs
+	url = git@github.com:SanderMertens/flecs.git

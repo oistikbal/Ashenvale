@@ -77,9 +77,13 @@ target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/Win
 target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/imgui")
 target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/")
 
+add_definitions(-DNOMINMAX)
 
 set_target_properties(Ashenvale PROPERTIES CXX_STANDARD 20)
 set_target_properties(Ashenvale PROPERTIES CXX_STANDARD_REQUIRED True)
+
+target_link_libraries(Ashenvale flecs::flecs_static)
+
 
 if(WIN32)
     target_link_libraries(Ashenvale d3d11 dxguid dxgi d3dcompiler ImGui "${CMAKE_SOURCE_DIR}/thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.lib") 

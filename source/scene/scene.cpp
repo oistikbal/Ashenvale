@@ -1,6 +1,8 @@
 #include "scene.h"
 #include "renderer/device.h"
+#include "editor/inspector.h"
 
+#include "component.h"
 #include "stb_image.h"
 #include <cgltf.h>
 #include <filesystem>
@@ -62,7 +64,8 @@ winrt::com_ptr<ID3D11ShaderResourceView> create_texture_from_gltf_image(const cg
     desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     desc.SampleDesc.Count = 1;
     desc.Usage = D3D11_USAGE_DEFAULT;
-    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+    ;
     desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
     D3D11_SUBRESOURCE_DATA initData = {};
@@ -71,7 +74,6 @@ winrt::com_ptr<ID3D11ShaderResourceView> create_texture_from_gltf_image(const cg
 
     winrt::com_ptr<ID3D11Texture2D> texture;
     HRESULT hr = ashenvale::renderer::device::g_device->CreateTexture2D(&desc, nullptr, texture.put());
-
 
     if (FAILED(hr))
     {
@@ -89,16 +91,15 @@ winrt::com_ptr<ID3D11ShaderResourceView> create_texture_from_gltf_image(const cg
     winrt::com_ptr<ID3D11ShaderResourceView> srv;
     hr = ashenvale::renderer::device::g_device->CreateShaderResourceView(texture.get(), &srvDesc, srv.put());
 
-
     if (FAILED(hr))
     {
         OutputDebugStringA("Failed to create SRV for texture\n");
         return nullptr;
     }
-    
-     ashenvale::renderer::device::g_context->UpdateSubresource(texture.get(), 0, nullptr, pixels, width * 4, 0);
-     ashenvale::renderer::device::g_context->GenerateMips(srv.get());
-     stbi_image_free(pixels);
+
+    ashenvale::renderer::device::g_context->UpdateSubresource(texture.get(), 0, nullptr, pixels, width * 4, 0);
+    ashenvale::renderer::device::g_context->GenerateMips(srv.get());
+    stbi_image_free(pixels);
 
     return srv;
 }
@@ -145,14 +146,10 @@ winrt::com_ptr<ID3D11SamplerState> create_default_sampler()
     return SUCCEEDED(hr) ? sampler : nullptr;
 }
 
-
 } // namespace
 
 void ashenvale::scene::load_scene(const char *path)
 {
-    ashenvale::scene::scene_node node;
-    update_world_matrix(node);
-
     cgltf_data *data = nullptr;
     cgltf_options options = {};
 
@@ -160,211 +157,229 @@ void ashenvale::scene::load_scene(const char *path)
     {
         cgltf_load_buffers(&options, data, path);
 
-
-        for (size_t i = 0; i < data->meshes_count; ++i)
+        for (size_t i = 0; i < data->nodes_count; i++)
         {
-            const cgltf_mesh &srcMesh = data->meshes[i];
+            const cgltf_node &node = data->nodes[i];
 
-            for (size_t j = 0; j < srcMesh.primitives_count; ++j)
+            auto e = g_world.entity();
+
+            scene::transform tc{};
+            if (node.has_translation)
+                memcpy(&tc.position, node.translation, sizeof(float) * 3);
+            else
+                tc.position = {0.f, 0.f, 0.f};
+
+            if (node.has_rotation)
+                memcpy(&tc.rotation, node.rotation, sizeof(float) * 4);
+            else
+                tc.rotation = {0.f, 0.f, 0.f, 1.f};
+
+            if (node.has_scale)
+                memcpy(&tc.scale, node.scale, sizeof(float) * 3);
+            else
+                tc.scale = {1.f, 1.f, 1.f};
+
+            e.add<scene::transform>();
+            e.set<scene::transform>(tc);
+            e.add<scene::name>();
+            if (node.mesh && node.mesh->primitives_count > 0)
             {
-                const cgltf_primitive &primitive = srcMesh.primitives[j];
-
-                std::vector<vertex> vertices;
-                std::vector<uint32_t> indices;
-
-                size_t vertexCount = 0;
-                cgltf_accessor *posAccessor = nullptr;
-
-                for (size_t k = 0; k < primitive.attributes_count; ++k)
+                scene::mesh_renderer mrc = {};
+                for (size_t j = 0; j < node.mesh->primitives_count; ++j)
                 {
-                    const cgltf_attribute &attr = primitive.attributes[k];
-                    if (attr.type == cgltf_attribute_type_position)
+                    scene::name name;
+                    if (node.name)
                     {
-                        posAccessor = attr.data;
-                        vertexCount = posAccessor->count;
-                        break;
+                        name.name = node.name;
+                        e.set<scene::name>(name);
                     }
-                }
-
-                vertices.resize(vertexCount);
-
-
-                for (size_t k = 0; k < primitive.attributes_count; ++k)
-                {
-                    const cgltf_attribute &attr = primitive.attributes[k];
-                    const cgltf_accessor *accessor = attr.data;
-                    const cgltf_buffer_view *view = accessor->buffer_view;
-                    const uint8_t *base =
-                        static_cast<const uint8_t *>(view->buffer->data) + view->offset + accessor->offset;
-
-                    for (size_t v = 0; v < accessor->count; ++v)
+                    else
                     {
-                        const float *data = reinterpret_cast<const float *>(base + accessor->stride * v);
-                        switch (attr.type)
+                        name.name = "Unknown";
+                        e.set<scene::name>(name);
+                    }
+
+                    const cgltf_primitive &primitive = node.mesh->primitives[j];
+
+                    std::vector<vertex> vertices;
+                    std::vector<uint32_t> indices;
+
+                    size_t vertexCount = 0;
+                    cgltf_accessor *posAccessor = nullptr;
+
+                    for (size_t k = 0; k < primitive.attributes_count; ++k)
+                    {
+                        const cgltf_attribute &attr = primitive.attributes[k];
+                        if (attr.type == cgltf_attribute_type_position)
                         {
-                        case cgltf_attribute_type_position:
-                            memcpy(&vertices[v].position, data, sizeof(float) * 3);
-                            break;
-                        case cgltf_attribute_type_texcoord:
-                            memcpy(&vertices[v].uv, data, sizeof(float) * 2);
-                            break;
-                        case cgltf_attribute_type_normal:
-                            memcpy(&vertices[v].normal, data, sizeof(float) * 3);
-                            break;
-                        case cgltf_attribute_type_tangent:
-                            memcpy(&vertices[v].tangent, data, sizeof(float) * 3);
-                            break;
-                        default:
+                            posAccessor = attr.data;
+                            vertexCount = posAccessor->count;
                             break;
                         }
                     }
-                }
 
-                if (primitive.indices)
-                {
-                    const cgltf_accessor *accessor = primitive.indices;
-                    const cgltf_buffer_view *view = accessor->buffer_view;
-                    const uint8_t *base =
-                        static_cast<const uint8_t *>(view->buffer->data) + view->offset + accessor->offset;
+                    vertices.resize(vertexCount);
 
-                    for (size_t k = 0; k < accessor->count; ++k)
+                    for (size_t k = 0; k < primitive.attributes_count; ++k)
                     {
-                        uint32_t index = 0;
-                        switch (accessor->component_type)
+                        const cgltf_attribute &attr = primitive.attributes[k];
+                        const cgltf_accessor *accessor = attr.data;
+                        const cgltf_buffer_view *view = accessor->buffer_view;
+                        const uint8_t *base =
+                            static_cast<const uint8_t *>(view->buffer->data) + view->offset + accessor->offset;
+
+                        for (size_t v = 0; v < accessor->count; ++v)
                         {
-                        case cgltf_component_type_r_16u:
-                            index = reinterpret_cast<const uint16_t *>(base)[k];
-                            break;
-                        case cgltf_component_type_r_32u:
-                            index = reinterpret_cast<const uint32_t *>(base)[k];
-                            break;
-                        case cgltf_component_type_r_8u:
-                            index = reinterpret_cast<const uint8_t *>(base)[k];
-                            break;
-                        default:
-                            OutputDebugStringA("Unsupported index format.\n");
-                            break;
+                            const float *data = reinterpret_cast<const float *>(base + accessor->stride * v);
+                            switch (attr.type)
+                            {
+                            case cgltf_attribute_type_position:
+                                memcpy(&vertices[v].position, data, sizeof(float) * 3);
+                                break;
+                            case cgltf_attribute_type_texcoord:
+                                memcpy(&vertices[v].uv, data, sizeof(float) * 2);
+                                break;
+                            case cgltf_attribute_type_normal:
+                                memcpy(&vertices[v].normal, data, sizeof(float) * 3);
+                                break;
+                            case cgltf_attribute_type_tangent:
+                                memcpy(&vertices[v].tangent, data, sizeof(float) * 3);
+                                break;
+                            default:
+                                break;
+                            }
+                        }
+                    }
+
+                    if (primitive.indices)
+                    {
+                        const cgltf_accessor *accessor = primitive.indices;
+                        const cgltf_buffer_view *view = accessor->buffer_view;
+                        const uint8_t *base =
+                            static_cast<const uint8_t *>(view->buffer->data) + view->offset + accessor->offset;
+
+                        for (size_t k = 0; k < accessor->count; ++k)
+                        {
+                            uint32_t index = 0;
+                            switch (accessor->component_type)
+                            {
+                            case cgltf_component_type_r_16u:
+                                index = reinterpret_cast<const uint16_t *>(base)[k];
+                                break;
+                            case cgltf_component_type_r_32u:
+                                index = reinterpret_cast<const uint32_t *>(base)[k];
+                                break;
+                            case cgltf_component_type_r_8u:
+                                index = reinterpret_cast<const uint8_t *>(base)[k];
+                                break;
+                            default:
+                                OutputDebugStringA("Unsupported index format.\n");
+                                break;
+                            }
+
+                            indices.push_back(index);
+                        }
+                    }
+
+                    mesh m;
+                    {
+                        D3D11_BUFFER_DESC desc = {};
+                        desc.Usage = D3D11_USAGE_DEFAULT;
+                        desc.ByteWidth = UINT(vertices.size() * sizeof(vertex));
+                        desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+                        D3D11_SUBRESOURCE_DATA data = {};
+                        data.pSysMem = vertices.data();
+
+                        renderer::device::g_device->CreateBuffer(&desc, &data, m.vertexBuffer.put());
+                    }
+
+                    {
+                        D3D11_BUFFER_DESC desc = {};
+                        desc.Usage = D3D11_USAGE_DEFAULT;
+                        desc.ByteWidth = UINT(indices.size() * sizeof(uint32_t));
+                        desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+                        D3D11_SUBRESOURCE_DATA data = {};
+                        data.pSysMem = indices.data();
+
+                        renderer::device::g_device->CreateBuffer(&desc, &data, m.indexBuffer.put());
+                    }
+
+                    m.indexCount = indices.size();
+
+                    material mat = {};
+                    if (primitive.material)
+                    {
+                        const cgltf_material &cgMat = *primitive.material;
+                        if (cgMat.name)
+                        {
+                            mat.name = cgMat.name;
+                        }
+                        else
+                        {
+                            mat.name = "Unknown Material";
+                        }
+                        mat.shader = &renderer::shader::g_pbrShader;
+
+                        if (cgMat.pbr_metallic_roughness.base_color_texture.texture)
+                        {
+                            const cgltf_texture *tex = cgMat.pbr_metallic_roughness.base_color_texture.texture;
+                            if (tex->image)
+                            {
+                                winrt::com_ptr<ID3D11ShaderResourceView> srv =
+                                    create_texture_from_gltf_image(tex->image, tex->image->uri);
+                                if (srv)
+                                {
+                                    material_set_texture(mat, "diffuseTexture", srv);
+                                }
+                            }
                         }
 
-                        indices.push_back(index);
+                        if (cgMat.normal_texture.texture)
+                        {
+                            const cgltf_texture *tex = cgMat.normal_texture.texture;
+                            if (tex->image)
+                            {
+                                winrt::com_ptr<ID3D11ShaderResourceView> srv =
+                                    create_texture_from_gltf_image(tex->image, tex->image->uri);
+                                if (srv)
+                                {
+                                    material_set_texture(mat, "normalTexture", srv);
+                                }
+                            }
+                        }
+
+                        winrt::com_ptr<ID3D11Buffer> materialCB = create_material_constant_buffer(cgMat);
+                        if (materialCB)
+                        {
+                            material_set_constant_buffer(mat, "MaterialConstants", materialCB);
+                        }
+
+                        winrt::com_ptr<ID3D11SamplerState> defaultSampler = create_default_sampler();
+                        if (defaultSampler)
+                        {
+                            material_set_sampler(mat, "defaultSampler", defaultSampler);
+                        }
+
+                        mrc.meshes.push_back(m);
+                        mrc.materials.push_back(mat);
                     }
+
                 }
-
-                mesh m;
-                {
-                    D3D11_BUFFER_DESC desc = {};
-                    desc.Usage = D3D11_USAGE_DEFAULT;
-                    desc.ByteWidth = UINT(vertices.size() * sizeof(vertex));
-                    desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-                    D3D11_SUBRESOURCE_DATA data = {};
-                    data.pSysMem = vertices.data();
-
-                    renderer::device::g_device->CreateBuffer(&desc, &data, m.vertexBuffer.put());
-                }
-
-                {
-                    D3D11_BUFFER_DESC desc = {};
-                    desc.Usage = D3D11_USAGE_DEFAULT;
-                    desc.ByteWidth = UINT(indices.size() * sizeof(uint32_t));
-                    desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-                    D3D11_SUBRESOURCE_DATA data = {};
-                    data.pSysMem = indices.data();
-
-                    renderer::device::g_device->CreateBuffer(&desc, &data, m.indexBuffer.put());
-                }
-
-                m.indexCount = static_cast<uint32_t>(indices.size());
-
-                uint32_t meshIndex = static_cast<uint32_t>(ashenvale::scene::g_meshes.size());
-                ashenvale::scene::g_meshes.push_back(m);
-
-                uint32_t materialIndex = 0;
-                if (primitive.material)
-                {
-                    size_t matIdx = primitive.material - data->materials;
-                    materialIndex = static_cast<uint32_t>(matIdx);
-                }
-
-                node.renderables.push_back({meshIndex, materialIndex});
+                e.add<scene::mesh_renderer>();
+                e.set<scene::mesh_renderer>(mrc);
             }
         }
 
-        for (size_t i = 0; i < data->materials_count; ++i)
-        {
-            const cgltf_material &cgMat = data->materials[i];
-            material mat = {};
-            mat.shader = &renderer::shader::g_pbrShader;
-
-            if (cgMat.pbr_metallic_roughness.base_color_texture.texture)
-            {
-                const cgltf_texture *tex = cgMat.pbr_metallic_roughness.base_color_texture.texture;
-                if (tex->image)
-                {
-                    winrt::com_ptr<ID3D11ShaderResourceView> srv =
-                        create_texture_from_gltf_image(tex->image, tex->image->uri);
-                    if (srv)
-                    {
-                        material_set_texture(mat, "diffuseTexture", srv);
-                    }
-                }
-            }
-
-            if (cgMat.normal_texture.texture)
-            {
-                const cgltf_texture *tex = cgMat.normal_texture.texture;
-                if (tex->image)
-                {
-                    winrt::com_ptr<ID3D11ShaderResourceView> srv =
-                        create_texture_from_gltf_image(tex->image, tex->image->uri);
-                    if (srv)
-                    {
-                        material_set_texture(mat, "normalTexture", srv);
-                    }
-                }
-            }
-
-            winrt::com_ptr<ID3D11Buffer> materialCB = create_material_constant_buffer(cgMat);
-            if (materialCB)
-            {
-                material_set_constant_buffer(mat, "MaterialConstants", materialCB);
-            }
-
-            winrt::com_ptr<ID3D11SamplerState> defaultSampler = create_default_sampler();
-            if (defaultSampler)
-            {
-                material_set_sampler(mat, "defaultSampler", defaultSampler);
-            }
-
-            g_materials.push_back(mat);
-        }
-
-        //node.name = data->nodes[0].name;
         cgltf_free(data);
     }
-
-    g_nodes.push_back(std::move(node));
-}
-
-void ashenvale::scene::update_world_matrix(ashenvale::scene::scene_node &node)
-{
-    XMMATRIX S = XMMatrixScaling(node.scale.x, node.scale.y, node.scale.z);
-    XMMATRIX R = XMMatrixRotationQuaternion(XMLoadFloat4(&node.rotation));
-    XMMATRIX T = XMMatrixTranslation(node.translation.x, node.translation.y, node.translation.z);
-    XMMATRIX world = S * R * T;
-    node.worldMatrix = world;
 }
 
 void ashenvale::scene::close_scene()
 {
-    g_meshes.clear();
-    g_materials.clear();
-    for (auto &node : g_nodes)
-    {
-        node.renderables.clear();
-    }
-    g_nodes.resize(0);
+    g_world.reset();
+    editor::inspector::g_selectedEntity = flecs::entity::null();
 }
 
 namespace ashenvale::scene
@@ -379,7 +394,6 @@ void material_set_constant_buffer(material &mat, const std::string &name, winrt:
         return;
     }
 
-    // Create new resource entry
     material_resource newResource;
     newResource.name = name;
     newResource.constantBuffer = buffer;
@@ -395,7 +409,6 @@ void material_set_texture(material &mat, const std::string &name, winrt::com_ptr
         return;
     }
 
-    // Create new resource entry
     material_resource newResource;
     newResource.name = name;
     newResource.srv = srv;
@@ -411,7 +424,6 @@ void material_set_sampler(material &mat, const std::string &name, winrt::com_ptr
         return;
     }
 
-    // Create new resource entry
     material_resource newResource;
     newResource.name = name;
     newResource.sampler = sampler;
