@@ -115,9 +115,10 @@ winrt::com_ptr<ID3D11Buffer> create_material_constant_buffer(const cgltf_materia
     constants.normalScale = cgMat.normal_texture.scale;
 
     D3D11_BUFFER_DESC desc = {};
-    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.Usage = D3D11_USAGE_DYNAMIC;
     desc.ByteWidth = sizeof(ashenvale::scene::material_constants);
     desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
     D3D11_SUBRESOURCE_DATA data = {};
     data.pSysMem = &constants;

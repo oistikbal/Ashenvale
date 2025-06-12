@@ -1,6 +1,7 @@
 #include "inspector.h"
 #include "scene/scene.h"
 #include <imgui.h>
+#include "renderer/device.h"
 
 void ashenvale::editor::inspector::render()
 {
@@ -39,9 +40,74 @@ void ashenvale::editor::inspector::render()
                 {
                     ImGui::Text("Meshes: %zu", nmc.meshes.size());
                     ImGui::Text("Materials: %zu", nmc.materials.size());
-                }
 
-                e.set<ashenvale::scene::mesh_renderer>(nmc);
+                    if (ImGui::TreeNode("Materials"))
+                    {
+                        int matIndex = 0;
+                        for (const auto &mat : nmc.materials)
+                        {
+                            std::string matLabel = "Material " + std::to_string(matIndex++) + ": " + mat.name;
+                            if (ImGui::TreeNode(matLabel.c_str()))
+                            {
+                                int resIndex = 0;
+                                for (const auto &res : mat.resources)
+                                {
+                                    std::string resLabel = "Resource " + std::to_string(resIndex++) + ": " + res.name;
+                                    if (ImGui::TreeNode(resLabel.c_str()))
+                                    {
+                                        if (res.srv)
+                                        {
+                                            ImGui::Text("Shader Resource View:");
+                                            ImGui::Image((ImTextureID)(intptr_t)res.srv.get(), ImVec2(128, 128));
+                                        }
+
+                                        if (res.constantBuffer)
+                                        {
+                                            if (ImGui::TreeNode("Constant Buffer"))
+                                            {
+                                                D3D11_MAPPED_SUBRESOURCE mapped;
+                                                HRESULT hr = renderer::device::g_context->Map(
+                                                    res.constantBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+
+                                                if (SUCCEEDED(hr))
+                                                {
+                                                    auto *constants =
+                                                        reinterpret_cast<ashenvale::scene::material_constants *>(
+                                                            mapped.pData);
+
+                                                    ImGui::ColorEdit4("Base Color", reinterpret_cast<float *>(
+                                                                                        &constants->baseColorFactor));
+                                                    ImGui::SliderFloat("Metallic", &constants->metallicFactor, 0.0f,
+                                                                       1.0f);
+                                                    ImGui::SliderFloat("Roughness", &constants->roughnessFactor, 0.0f,
+                                                                       1.0f);
+                                                    ImGui::SliderFloat("Normal Scale", &constants->normalScale, 0.0f,
+                                                                       2.0f);
+
+                                                    renderer::device::g_context->Unmap(res.constantBuffer.get(), 0);
+                                                }
+                                                else
+                                                {
+                                                    ImGui::TextColored(ImVec4(1, 0, 0, 1),
+                                                                       "Failed to map constant buffer!");
+                                                }
+
+                                                ImGui::TreePop();
+                                            }
+                                        }
+
+                                        if (res.sampler)
+                                            ImGui::Text("Has Sampler");
+
+                                        ImGui::TreePop();
+                                    }
+                                }
+                                ImGui::TreePop();
+                            }
+                        }
+                        ImGui::TreePop();
+                    }
+                }
             }
         }
     }
