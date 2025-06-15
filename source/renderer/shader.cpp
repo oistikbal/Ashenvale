@@ -81,4 +81,5 @@ void ashenvale::renderer::shader::initialize()
     compile(g_quadShader, L"quad_vs.hlsl", L"quad_ps.hlsl");
     compile(g_pbrShader, L"pbr_vs.hlsl", L"pbr_ps.hlsl");
     compile(g_wireframeShader, nullptr, L"wireframe_ps.hlsl");
+    compile(g_skydomeShader, L"skydome_vs.hlsl", L"skydome_ps.hlsl");
 }

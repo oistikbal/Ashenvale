@@ -3,8 +3,8 @@
 #include "renderer/render_pass.h"
 #include "renderer/shader.h"
 #include <DirectXMath.h>
-#include <winrt/base.h>
 #include <flecs.h>
+#include <winrt/base.h>
 
 namespace ashenvale::scene
 {
@@ -76,6 +76,7 @@ inline flecs::world g_world;
 
 namespace ashenvale::scene
 {
+void initialize();
 void load_scene(const char *path);
 void close_scene();
 void material_set_constant_buffer(material &mat, const std::string &name, winrt::com_ptr<ID3D11Buffer> buffer);

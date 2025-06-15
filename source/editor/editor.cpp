@@ -1,21 +1,22 @@
+#include <Windows.h>
+#include <commdlg.h>
 #include <imgui.h>
 #include <imgui/backends/imgui_impl_dx11.h>
 #include <imgui/backends/imgui_impl_win32.cpp>
 #include <imgui/backends/imgui_impl_win32.h>
-#include <Windows.h>
-#include <commdlg.h>
 
 #include "console.h"
 #include "editor.h"
+#include "editor/scene.h"
 #include "editor/settings.h"
 #include "editor/viewport.h"
-#include "editor/scene.h"
+#include "inspector.h"
 #include "profiler/profiler.h"
 #include "renderer/device.h"
 #include "renderer/renderer.h"
-#include "window/window.h"
 #include "scene/scene.h"
-#include "inspector.h"
+#include "scene/skydome.h"
+#include "window/window.h"
 
 bool ashenvale::editor::initialize()
 {
@@ -131,11 +132,11 @@ void ashenvale::editor::render()
 
     if (ImGui::BeginMainMenuBar())
     {
-        if (ImGui::BeginMenu("File"))
+        if (ImGui::BeginMenu("Scene"))
         {
-            if(ImGui::MenuItem("Load glTF Scene"))
+            if (ImGui::MenuItem("Open glTF Scene"))
             {
-               char filename[MAX_PATH] = {};
+                char filename[MAX_PATH] = {};
 
                 OPENFILENAME ofn = {};
                 ofn.lStructSize = sizeof(ofn);
@@ -149,11 +150,33 @@ void ashenvale::editor::render()
                     ashenvale::scene::load_scene(filename);
                 }
             }
+            if (ImGui::MenuItem("Open HDRI Skydome"))
+            {
+                char filename[MAX_PATH] = {};
+
+                OPENFILENAME ofn = {};
+                ofn.lStructSize = sizeof(ofn);
+                ofn.lpstrFilter = "HDRI Files\0*.hdr;";
+                ofn.lpstrFile = filename;
+                ofn.nMaxFile = MAX_PATH;
+                ofn.Flags = OFN_FILEMUSTEXIST;
+                ofn.hwndOwner = window::g_hwnd;
+                if (GetOpenFileNameA(&ofn))
+                {
+                    ashenvale::scene::skydome::load_hdri_skydome(filename);
+                }
+            }
+
             if (ImGui::MenuItem("Close Scene"))
             {
                 ashenvale::scene::close_scene();
             }
-            
+
+            if (ImGui::MenuItem("Close Skydome"))
+            {
+                ashenvale::scene::skydome::close();
+            }
+
             ImGui::EndMenu();
         }
 

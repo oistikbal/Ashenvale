@@ -1,6 +1,7 @@
 #include "scene.h"
 #include "renderer/device.h"
 #include "editor/inspector.h"
+#include "skydome.h"
 
 #include "component.h"
 #include "stb_image.h"
@@ -48,6 +49,7 @@ winrt::com_ptr<ID3D11ShaderResourceView> create_texture_from_gltf_image(const cg
     }
 
     int width, height, channels;
+    stbi_set_flip_vertically_on_load(false);
     unsigned char *pixels =
         stbi_load_from_memory(buffer.data(), static_cast<int>(fileSize), &width, &height, &channels, 4);
     if (!pixels)
@@ -148,6 +150,11 @@ winrt::com_ptr<ID3D11SamplerState> create_default_sampler()
 }
 
 } // namespace
+
+void ashenvale::scene::initialize()
+{
+    skydome::initialize();
+}
 
 void ashenvale::scene::load_scene(const char *path)
 {

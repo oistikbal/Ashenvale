@@ -5,6 +5,7 @@
 #include "renderer/renderer.h"
 #include "renderer/shader.h"
 #include "scene/scene.h"
+#include "scene/skydome.h"
 #include <d3d11_4.h>
 #include <winrt/base.h>
 
@@ -37,10 +38,12 @@ void ashenvale::renderer::render_pass::geometry::execute(const render_pass_conte
     UINT stride = sizeof(ashenvale::scene::vertex);
     UINT offset = 0;
 
-    scene::g_world.each([&](flecs::entity e, ashenvale::scene::transform &tc, ashenvale::scene::mesh_renderer &mrc) {
-        DirectX::XMVECTOR quat_rot = DirectX::XMQuaternionRotationRollPitchYaw(DirectX::XMConvertToRadians(tc.rotation.x), DirectX::XMConvertToRadians(tc.rotation.y),
-            DirectX::XMConvertToRadians(tc.rotation.z));
+    scene::skydome::render();
 
+    scene::g_world.each([&](flecs::entity e, ashenvale::scene::transform &tc, ashenvale::scene::mesh_renderer &mrc) {
+        DirectX::XMVECTOR quat_rot = DirectX::XMQuaternionRotationRollPitchYaw(
+            DirectX::XMConvertToRadians(tc.rotation.x), DirectX::XMConvertToRadians(tc.rotation.y),
+            DirectX::XMConvertToRadians(tc.rotation.z));
 
         DirectX::XMMATRIX world = DirectX::XMMatrixScaling(tc.scale.x, tc.scale.y, tc.scale.z) *
                                   DirectX::XMMatrixRotationQuaternion(quat_rot) *

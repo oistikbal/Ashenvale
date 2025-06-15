@@ -8,6 +8,7 @@
 #include "renderer/swapchain.h"
 #include "window/window.h"
 #include "shader.h"
+#include "scene/scene.h"
 
 using namespace winrt;
 
@@ -72,6 +73,7 @@ bool ashenvale::renderer::device::initialize()
     swapchain::create(renderWidth, renderHeight);
     shader::initialize();
     renderer::initialize();
+    scene::initialize();
 
     resize_viewport(renderWidth, renderHeight);
 
