@@ -117,6 +117,7 @@ bool ashenvale::editor::initialize()
     style.GrabMinSize = 10;
 
     ashenvale::editor::console::initialize();
+    ashenvale::editor::inspector::initialize();
 
     return true;
 }

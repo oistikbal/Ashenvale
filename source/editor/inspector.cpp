@@ -1,7 +1,25 @@
 #include "inspector.h"
+#include "renderer/device.h"
 #include "scene/scene.h"
 #include <imgui.h>
-#include "renderer/device.h"
+
+using namespace winrt;
+
+namespace
+{
+com_ptr<ID3D11Buffer> g_stagingConstantBuffer;
+}
+
+void ashenvale::editor::inspector::initialize()
+{
+    D3D11_BUFFER_DESC desc = {};
+    desc.Usage = D3D11_USAGE_STAGING;
+    desc.ByteWidth = sizeof(ashenvale::scene::material_constants);
+    desc.BindFlags = 0;
+    desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
+
+    HRESULT hr = ashenvale::renderer::device::g_device->CreateBuffer(&desc, nullptr, g_stagingConstantBuffer.put());
+}
 
 void ashenvale::editor::inspector::render()
 {
@@ -65,9 +83,14 @@ void ashenvale::editor::inspector::render()
                                         {
                                             if (ImGui::TreeNode("Constant Buffer"))
                                             {
+
+                                                renderer::device::g_context->CopyResource(g_stagingConstantBuffer.get(),
+                                                                                          res.constantBuffer.get());
+
                                                 D3D11_MAPPED_SUBRESOURCE mapped;
                                                 HRESULT hr = renderer::device::g_context->Map(
-                                                    res.constantBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+                                                    g_stagingConstantBuffer.get(), 0, D3D11_MAP_READ_WRITE, 0,
+                                                    &mapped);
 
                                                 if (SUCCEEDED(hr))
                                                 {
@@ -84,7 +107,11 @@ void ashenvale::editor::inspector::render()
                                                     ImGui::SliderFloat("Normal Scale", &constants->normalScale, 0.0f,
                                                                        2.0f);
 
-                                                    renderer::device::g_context->Unmap(res.constantBuffer.get(), 0);
+                                                    renderer::device::g_context->Unmap(g_stagingConstantBuffer.get(),
+                                                                                       0);
+
+                                                    renderer::device::g_context->UpdateSubresource(res.constantBuffer.get(), 0, nullptr, constants, 0, 0);
+
                                                 }
                                                 else
                                                 {

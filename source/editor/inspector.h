@@ -10,5 +10,6 @@ inline flecs::entity g_selectedEntity = flecs::entity::null();
 
 namespace ashenvale::editor::inspector
 {
+void initialize();
 void render();
 }
