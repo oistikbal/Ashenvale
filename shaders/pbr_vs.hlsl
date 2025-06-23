@@ -16,6 +16,7 @@ struct VertexInputType
 struct PixelInputType
 {
     float4 position : SV_POSITION;
+    float3 normal : NORMAL;
     float2 tex : TEXCOORD0;
 };
 
@@ -28,6 +29,6 @@ PixelInputType main(VertexInputType input)
     output.position = mul(output.position, projectionMatrix);
 
     output.tex = input.tex;
-
+    output.normal = normalize(mul(input.normal, (float3x3) modelMatrix));
     return output;
 }

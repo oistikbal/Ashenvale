@@ -6,14 +6,22 @@
 
 using namespace winrt;
 
-void ashenvale::renderer::swapchain::create(int width, int height)
+namespace
+{
+DXGI_FORMAT g_swapchainFormat;
+}
+
+void ashenvale::renderer::swapchain::initialize(int width, int height, DXGI_FORMAT format)
 {
     PIX_SCOPED_EVENT("swapchain.create")
+
+    g_swapchainFormat = format;
+
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.BufferCount = 2;
     swapChainDesc.Width = width;
     swapChainDesc.Height = height;
-    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc.Format = g_swapchainFormat;
     swapChainDesc.SampleDesc.Count = 1;
     swapChainDesc.SampleDesc.Quality = 0;
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -39,7 +47,12 @@ void ashenvale::renderer::swapchain::create(int width, int height)
     com_ptr<ID3D11Texture2D> backBuffer;
     g_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.put()));
 
-    ashenvale::renderer::device::g_device->CreateRenderTargetView1(backBuffer.get(), nullptr, g_renderTargetView.put());
+    D3D11_RENDER_TARGET_VIEW_DESC1 vdesc = {};
+    vdesc.Format = g_swapchainFormat;
+    vdesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+    vdesc.Texture2D.MipSlice = 0;
+
+    ashenvale::renderer::device::g_device->CreateRenderTargetView1(backBuffer.get(), &vdesc, g_renderTargetView.put());
     g_renderTargetView.as(g_baseRTV);
 }
 
@@ -52,12 +65,17 @@ void ashenvale::renderer::swapchain::resize(int width, int height)
     g_renderTargetView = nullptr;
     g_baseRTV = nullptr;
 
-    g_swapChain->ResizeBuffers(2, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+    g_swapChain->ResizeBuffers(2, width, height, g_swapchainFormat, 0);
 
     com_ptr<ID3D11Texture2D> backBuffer;
     g_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.put()));
 
-    ashenvale::renderer::device::g_device->CreateRenderTargetView1(backBuffer.get(), nullptr, g_renderTargetView.put());
+    D3D11_RENDER_TARGET_VIEW_DESC1 vdesc = {};
+    vdesc.Format = g_swapchainFormat;
+    vdesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+    vdesc.Texture2D.MipSlice = 0;
+
+    ashenvale::renderer::device::g_device->CreateRenderTargetView1(backBuffer.get(), &vdesc, g_renderTargetView.put());
     g_renderTargetView.as(g_baseRTV);
 
     g_viewport = {};

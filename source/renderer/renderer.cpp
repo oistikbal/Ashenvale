@@ -36,7 +36,7 @@ void ashenvale::renderer::resize_viewport(int width, int height)
     colorDesc.Height = height;
     colorDesc.MipLevels = 1;
     colorDesc.ArraySize = 1;
-    colorDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    colorDesc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
     colorDesc.SampleDesc.Count = 1;
     colorDesc.Usage = D3D11_USAGE_DEFAULT;
     colorDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;

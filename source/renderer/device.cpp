@@ -40,29 +40,12 @@ bool ashenvale::renderer::device::initialize()
 
     adapterOutput.as(g_baseOutput);
 
-    DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    DXGI_MODE_DESC1 targetMode = {};
+    targetMode.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
 
-    UINT numModes = 0;
-    result = g_baseOutput->GetDisplayModeList1(format, 0, &numModes, nullptr);
+    DXGI_MODE_DESC1 closeMatch = {};
 
-    DXGI_MODE_DESC1 displayModeList[512] = {};
-    result = g_baseOutput->GetDisplayModeList1(format, 0, &numModes, displayModeList);
-
-    UINT numerator = 0, denominator = 0;
-    for (UINT i = 0; i < numModes; ++i)
-    {
-        if (displayModeList[i].Width == 1280 && displayModeList[i].Height == 720)
-        {
-            numerator = displayModeList[i].RefreshRate.Numerator;
-            denominator = displayModeList[i].RefreshRate.Denominator;
-            break;
-        }
-    }
-    if (numerator == 0 || denominator == 0)
-    {
-        numerator = 60;
-        denominator = 1;
-    }
+    g_baseOutput->FindClosestMatchingMode1(&targetMode, &closeMatch, g_device.get());
 
     RECT clientRect;
     GetClientRect(window::g_hwnd, &clientRect);
@@ -70,7 +53,7 @@ bool ashenvale::renderer::device::initialize()
     int renderWidth = clientRect.right - clientRect.left;
     int renderHeight = clientRect.bottom - clientRect.top;
 
-    swapchain::create(renderWidth, renderHeight);
+    swapchain::initialize(renderWidth, renderHeight, closeMatch.Format);
     shader::initialize();
     renderer::initialize();
     scene::initialize();
