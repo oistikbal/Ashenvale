@@ -106,7 +106,7 @@ void ashenvale::scene::skydome::initialize()
 
     D3D11_BUFFER_DESC cameraBufferDesc = {};
     cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-    cameraBufferDesc.ByteWidth = sizeof(ashenvale::renderer::camera::mvp_buffer);
+    cameraBufferDesc.ByteWidth = sizeof(ashenvale::renderer::camera::camera_buffer);
     cameraBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     cameraBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -199,11 +199,11 @@ void ashenvale::scene::skydome::render()
 
     view.r[3] = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
 
-    renderer::camera::mvp_buffer mvp = {};
+    renderer::camera::camera_buffer mvp = {};
     DirectX::XMStoreFloat4x4(&mvp.world, DirectX::XMMatrixTranspose(world));
     DirectX::XMStoreFloat4x4(&mvp.view, XMMatrixTranspose(view));
-
     DirectX::XMStoreFloat4x4(&mvp.projection, DirectX::XMMatrixTranspose(renderer::camera::g_projectionMatrix));
+    mvp.cameraPosition = renderer::camera::g_position;
 
     D3D11_MAPPED_SUBRESOURCE mappedResource = {};
     renderer::device::g_context->Map(g_cameraBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);

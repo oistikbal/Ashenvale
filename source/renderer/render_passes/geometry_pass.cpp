@@ -20,7 +20,7 @@ void ashenvale::renderer::render_pass::geometry::initialize()
 {
     D3D11_BUFFER_DESC cameraBufferDesc = {};
     cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-    cameraBufferDesc.ByteWidth = sizeof(ashenvale::renderer::camera::mvp_buffer);
+    cameraBufferDesc.ByteWidth = sizeof(ashenvale::renderer::camera::camera_buffer);
     cameraBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     cameraBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -49,10 +49,11 @@ void ashenvale::renderer::render_pass::geometry::execute(const render_pass_conte
                                   DirectX::XMMatrixRotationQuaternion(quat_rot) *
                                   DirectX::XMMatrixTranslation(tc.position.x, tc.position.y, tc.position.z);
 
-        renderer::camera::mvp_buffer mvp = {};
+        renderer::camera::camera_buffer mvp = {};
         DirectX::XMStoreFloat4x4(&mvp.world, DirectX::XMMatrixTranspose(world));
         DirectX::XMStoreFloat4x4(&mvp.view, DirectX::XMMatrixTranspose(renderer::camera::g_viewMatrix));
         DirectX::XMStoreFloat4x4(&mvp.projection, DirectX::XMMatrixTranspose(renderer::camera::g_projectionMatrix));
+        mvp.cameraPosition = renderer::camera::g_position;
 
         D3D11_MAPPED_SUBRESOURCE mappedResource = {};
         renderer::device::g_context->Map(g_cameraBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -61,6 +62,7 @@ void ashenvale::renderer::render_pass::geometry::execute(const render_pass_conte
 
         ID3D11Buffer *const cameraBuffer[] = {g_cameraBuffer.get()};
         renderer::device::g_context->VSSetConstantBuffers(0, 1, cameraBuffer);
+        renderer::device::g_context->PSSetConstantBuffers(0, 1, cameraBuffer);
 
         UINT stride = sizeof(scene::vertex);
         UINT offset = 0;

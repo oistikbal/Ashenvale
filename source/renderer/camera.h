@@ -14,11 +14,13 @@ inline DirectX::XMMATRIX g_viewProjectionMatrix;
 inline DirectX::XMFLOAT3 g_position;
 inline DirectX::XMFLOAT3 g_rotation;
 
-struct mvp_buffer
+struct camera_buffer
 {
     DirectX::XMFLOAT4X4 world;
     DirectX::XMFLOAT4X4 view;
     DirectX::XMFLOAT4X4 projection;
+    DirectX::XMFLOAT3 cameraPosition;
+    float padding;
 };
 } // namespace ashenvale::renderer::camera
 

@@ -339,7 +339,7 @@ void ashenvale::scene::load_scene(const char *path)
                                     create_texture_from_gltf_image(tex->image, tex->image->uri);
                                 if (srv)
                                 {
-                                    material_set_texture(mat, "diffuseTexture", srv);
+                                    material_set_texture(mat, "albedoTexture", srv);
                                 }
                             }
                         }
