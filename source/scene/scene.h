@@ -71,6 +71,44 @@ struct mesh_renderer
     std::vector<material> materials;
 };
 
+struct light
+{
+    enum class light_type : uint8_t
+    {
+        directional,
+        point,
+        spot,
+    };
+
+    DirectX::XMFLOAT3 color;
+    float intensity;
+    light_type type;
+    float range;
+    float spot_inner_cone_angle;
+    float spot_outer_cone_angle;
+};
+
+struct light_buffer
+{
+    DirectX::XMFLOAT3 position;
+    float pad1;
+    DirectX::XMFLOAT3 color;
+    float intensity;
+    uint32_t light_type;
+    float linear;
+    float quadratic;
+    float range; 
+    float spot_inner_cone_angle;
+    float spot_outer_cone_angle;
+    float pad2[2];
+};
+
+struct light_meta
+{
+    uint32_t lightCount;
+    float padding[3];
+};
+
 inline flecs::world g_world;
 } // namespace ashenvale::scene
 

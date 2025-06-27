@@ -2,6 +2,7 @@
 #include "renderer/device.h"
 #include "shader_compiler.h"
 #include <d3d11_4.h>
+#include <iostream>
 #include <winrt/base.h>
 
 using namespace winrt;
@@ -16,7 +17,13 @@ void compile(ashenvale::renderer::shader::shader &shader, const wchar_t *vsPath,
 
     if (vsPath != nullptr)
     {
-        ashenvale::renderer::shader_compiler::compile(vsPath, "main", "vs_5_0", nullptr, vsBlob.put(), errorBlob.put());
+        auto hr = ashenvale::renderer::shader_compiler::compile(vsPath, "main", "vs_5_0", nullptr, vsBlob.put(),
+                                                                errorBlob.put());
+
+        if (FAILED(hr))
+        {
+            OutputDebugStringA((char *)errorBlob->GetBufferPointer());
+        }
 
         ashenvale::renderer::device::g_device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(),
                                                                   nullptr, shader.vertexShader.put());
@@ -50,7 +57,13 @@ void compile(ashenvale::renderer::shader::shader &shader, const wchar_t *vsPath,
 
     if (psPath != nullptr)
     {
-        ashenvale::renderer::shader_compiler::compile(psPath, "main", "ps_5_0", nullptr, psBlob.put(), errorBlob.put());
+        auto hr = ashenvale::renderer::shader_compiler::compile(psPath, "main", "ps_5_0", nullptr, psBlob.put(),
+                                                                errorBlob.put());
+
+        if (FAILED(hr))
+        {
+            OutputDebugStringA((char *)errorBlob->GetBufferPointer());
+        }
 
         ashenvale::renderer::device::g_device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(),
                                                                  nullptr, shader.pixelShader.put());

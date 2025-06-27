@@ -89,8 +89,7 @@ void ashenvale::editor::inspector::render()
 
                                                 D3D11_MAPPED_SUBRESOURCE mapped;
                                                 HRESULT hr = renderer::device::g_context->Map(
-                                                    g_stagingConstantBuffer.get(), 0, D3D11_MAP_READ_WRITE, 0,
-                                                    &mapped);
+                                                    g_stagingConstantBuffer.get(), 0, D3D11_MAP_READ_WRITE, 0, &mapped);
 
                                                 if (SUCCEEDED(hr))
                                                 {
@@ -110,8 +109,8 @@ void ashenvale::editor::inspector::render()
                                                     renderer::device::g_context->Unmap(g_stagingConstantBuffer.get(),
                                                                                        0);
 
-                                                    renderer::device::g_context->UpdateSubresource(res.constantBuffer.get(), 0, nullptr, constants, 0, 0);
-
+                                                    renderer::device::g_context->UpdateSubresource(
+                                                        res.constantBuffer.get(), 0, nullptr, constants, 0, 0);
                                                 }
                                                 else
                                                 {
@@ -135,6 +134,39 @@ void ashenvale::editor::inspector::render()
                         ImGui::TreePop();
                     }
                 }
+            }
+
+            if (auto *light = e.try_get<ashenvale::scene::light>())
+            {
+                ashenvale::scene::light lt = *light;
+
+                if (ImGui::CollapsingHeader("Light"))
+                {
+                    switch (light->type)
+                    {
+                    case scene::light::light_type::directional:
+                        ImGui::Text("Type: directional");
+                        break;
+                    case scene::light::light_type::point:
+                        ImGui::Text("Type: point");
+                        ImGui::SliderFloat("Range", &lt.range, 0.0f, 100.0f, "%.2f");
+
+                        break;
+                    case scene::light::light_type::spot:
+                        ImGui::Text("Type: spot");
+                        ImGui::SliderFloat("Range", &lt.range, 0.0f, 100.0f, "%.2f");
+                        ImGui::SliderFloat("Inner Angle", &lt.spot_inner_cone_angle, 0.0f, 180.0f);
+                        ImGui::SliderFloat("Outer Angle", &lt.spot_outer_cone_angle, 0.0f, 180.0f);
+                        break;
+                    default:
+                        break;
+                    }
+                    ImGui::SliderFloat("Intensity", &lt.intensity, 0.0f, 1000.0f);
+                    ImGui::ColorEdit3("Color", reinterpret_cast<float *>(&lt.color));
+
+                    e.set<ashenvale::scene::light>(lt);
+                }
+
             }
         }
     }

@@ -1,6 +1,6 @@
 #include "scene.h"
-#include "renderer/device.h"
 #include "editor/inspector.h"
+#include "renderer/device.h"
 #include "skydome.h"
 
 #include "component.h"
@@ -171,6 +171,18 @@ void ashenvale::scene::load_scene(const char *path)
 
             auto e = g_world.entity();
 
+            scene::name name;
+            if (node.name)
+            {
+                name.name = node.name;
+                e.set<scene::name>(name);
+            }
+            else
+            {
+                name.name = "Unknown";
+                e.set<scene::name>(name);
+            }
+
             scene::transform tc{};
             if (node.has_translation)
                 memcpy(&tc.position, node.translation, sizeof(float) * 3);
@@ -190,23 +202,12 @@ void ashenvale::scene::load_scene(const char *path)
             e.add<scene::transform>();
             e.set<scene::transform>(tc);
             e.add<scene::name>();
+
             if (node.mesh && node.mesh->primitives_count > 0)
             {
                 scene::mesh_renderer mrc = {};
                 for (size_t j = 0; j < node.mesh->primitives_count; ++j)
                 {
-                    scene::name name;
-                    if (node.name)
-                    {
-                        name.name = node.name;
-                        e.set<scene::name>(name);
-                    }
-                    else
-                    {
-                        name.name = "Unknown";
-                        e.set<scene::name>(name);
-                    }
-
                     const cgltf_primitive &primitive = node.mesh->primitives[j];
 
                     std::vector<vertex> vertices;
@@ -373,11 +374,40 @@ void ashenvale::scene::load_scene(const char *path)
                         mrc.meshes.push_back(m);
                         mrc.materials.push_back(mat);
                     }
-
                 }
                 e.add<scene::mesh_renderer>();
                 e.set<scene::mesh_renderer>(mrc);
             }
+
+            if (node.light != nullptr)
+            {
+                scene::light lc = {};
+                cgltf_light& const light = *(node.light);
+                lc.color = DirectX::XMFLOAT3(light.color[0], light.color[1], light.color[2]);
+                lc.intensity = light.intensity;
+                lc.range = light.range;
+                lc.spot_inner_cone_angle = light.spot_inner_cone_angle;
+                lc.spot_outer_cone_angle = light.spot_outer_cone_angle;
+
+                switch (light.type)
+                {
+                case cgltf_light_type_directional:
+                    lc.type = light::light_type::directional;
+                    break;
+                case cgltf_light_type_point:
+                    lc.type = light::light_type::point;
+                    break;
+                case cgltf_light_type_spot:
+                    lc.type = light::light_type::spot;
+                    break;
+                default:
+                    break;
+                }
+
+                e.add<scene::light>();
+                e.set<scene::light>(lc);
+            }
+
         }
 
         cgltf_free(data);

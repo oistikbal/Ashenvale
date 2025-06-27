@@ -14,7 +14,6 @@ HRESULT ashenvale::renderer::shader_compiler::compile(const wchar_t *file, const
 
     HRESULT hr = D3DCompileFromFile(fullPath.c_str(), defines, D3D_COMPILE_STANDARD_FILE_INCLUDE, entryPoint, target,
                                     D3DCOMPILE_ENABLE_STRICTNESS, 0, shaderBlob, errorBlob);
-
     return hr;
 }
 
