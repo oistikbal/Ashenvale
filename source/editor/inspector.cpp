@@ -161,7 +161,7 @@ void ashenvale::editor::inspector::render()
                     default:
                         break;
                     }
-                    ImGui::SliderFloat("Intensity", &lt.intensity, 0.0f, 1000.0f);
+                    ImGui::SliderFloat("Intensity", &lt.intensity, 0.0f, 100.0f, "%.2f");
                     ImGui::ColorEdit3("Color", reinterpret_cast<float *>(&lt.color));
 
                     e.set<ashenvale::scene::light>(lt);

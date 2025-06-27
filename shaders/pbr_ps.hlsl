@@ -55,7 +55,17 @@ cbuffer LightMeta : register(b2)
 
 float3 CalcDirLight(Light light, PixelInputType input)
 {
-    return float3(1.0f, 1.0f, 1.0f);
+    float3 lightDir = normalize(light.position - input.worldPos);    
+    float3 viewDir = normalize(cameraPosition - input.worldPos);
+    float3 reflectDir = reflect(-lightDir, input.normal);
+    
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
+    float3 specular = spec * light.color * light.intensity;
+
+    float diff = max(dot(input.normal, lightDir), 0.0);
+    float3 diffuse = diff * light.color * light.intensity;
+ 
+    return (diffuse + specular);
 }
 
 float3 CalcPointLight(Light light, PixelInputType input)
@@ -89,13 +99,14 @@ float4 main(PixelInputType input) : SV_TARGET
     {
         switch (lights[i].light_type)
         {
-            //case 0:
-            //    result += CalcDirLight(lights[i], input);
+            case 0:
+                lightResult += CalcDirLight(lights[i], input);
+                break;
             case 1:
                 lightResult += CalcPointLight(lights[i], input);
                 break;
             //case 2:
-            //    result += CalcSpotLight(lights[i], input);
+            //    lightResult += CalcSpotLight(lights[i], input);
         }
     }
     
