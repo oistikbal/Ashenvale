@@ -11,7 +11,8 @@ namespace ashenvale::renderer::render_graph
 		none,
 		depth,
 		wireframe,
-		wireframe_lit
+		wireframe_lit,
+		normal
 	};
 
 	enum class render_path : uint8_t

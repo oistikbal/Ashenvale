@@ -34,6 +34,12 @@ struct present_pass_context
 {
 };
 
+struct normal_pass_context
+{
+    ID3D11RenderTargetView *rtv;
+    ID3D11DepthStencilView *dsv;
+};
+
 struct debug_depth_pass_context
 {
     ID3D11RenderTargetView *rtv;
@@ -54,6 +60,7 @@ union render_pass_context {
     present_pass_context present;
     debug_depth_pass_context debug_depth;
     debug_wireframe_pass_context debug_wireframe;
+    normal_pass_context normal;
 };
 
 using render_pass_execute = void (*)(const render_pass_context &);

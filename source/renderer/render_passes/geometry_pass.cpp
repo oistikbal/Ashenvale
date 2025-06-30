@@ -1,6 +1,7 @@
 #include "geometry_pass.h"
 
 #include "renderer/camera.h"
+#include "editor/inspector.h"
 #include "renderer/device.h"
 #include "renderer/renderer.h"
 #include "renderer/shader.h"

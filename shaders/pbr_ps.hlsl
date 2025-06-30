@@ -115,7 +115,7 @@ float4 main(PixelInputType input) : SV_TARGET
 
     float3 textureColor = albedoTexture.Sample(defaultSampler, input.tex).rgb;
 
-    float3 lighting = lightResult + ambient;
+    float3 lighting = lightResult;
     float3 finalColor = textureColor * lighting * baseColorFactor.rgb;
 
     return float4(finalColor, baseColorFactor.a);

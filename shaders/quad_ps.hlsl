@@ -18,6 +18,6 @@ float4 main(PSInput input) : SV_Target
     float linearDepth = LinearizeDepth(depth);
 
     float normalized = (linearDepth - 0.1f) / (100.0f - 0.1f);
-
+    
     return float4(normalized, 0.0f, 0.0f, 1.0f);
 }

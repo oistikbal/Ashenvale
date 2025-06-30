@@ -26,7 +26,7 @@ void ashenvale::editor::settings::render()
         if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_DefaultOpen))
         {
             static int currentItem = 0;
-            const char *items[] = {"None", "Depth", "Wireframe", "Wireframe Lit"};
+            const char *items[] = {"None", "Depth", "Wireframe", "Wireframe Lit", "Normal"};
 
             ImGui::Combo("View Mode", &currentItem, items, IM_ARRAYSIZE(items));
 
