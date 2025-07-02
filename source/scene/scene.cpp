@@ -316,6 +316,7 @@ void ashenvale::scene::load_scene(const char *path)
                     }
 
                     m.indexCount = indices.size();
+                    m.vertexCount = vertices.size();
 
                     material mat = {};
                     if (primitive.material)
@@ -382,7 +383,7 @@ void ashenvale::scene::load_scene(const char *path)
             if (node.light != nullptr)
             {
                 scene::light lc = {};
-                cgltf_light& const light = *(node.light);
+                cgltf_light &const light = *(node.light);
                 lc.color = DirectX::XMFLOAT3(light.color[0], light.color[1], light.color[2]);
                 lc.intensity = light.intensity;
                 lc.range = light.range;
@@ -404,10 +405,37 @@ void ashenvale::scene::load_scene(const char *path)
                     break;
                 }
 
+                D3D11_TEXTURE2D_DESC shadowMapDesc = {};
+                shadowMapDesc.Width = 1024;
+                shadowMapDesc.Height = 1024;
+                shadowMapDesc.MipLevels = 0;
+                shadowMapDesc.ArraySize = 1;
+                shadowMapDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+                shadowMapDesc.SampleDesc.Count = 1;
+                shadowMapDesc.Usage = D3D11_USAGE_DEFAULT;
+                shadowMapDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_DEPTH_STENCIL;
+
+                renderer::device::g_device->CreateTexture2D(&shadowMapDesc, nullptr, lc.shadowMap.put());
+
+                D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+                dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+                dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+
+                renderer::device::g_device->CreateDepthStencilView(lc.shadowMap.get(), &dsvDesc,
+                                                                   lc.shadowDepthView.put());
+
+                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+                srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+                srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+                srvDesc.Texture2D.MostDetailedMip = 0;
+                srvDesc.Texture2D.MipLevels = 1;
+
+                renderer::device::g_device->CreateShaderResourceView(lc.shadowMap.get(), &srvDesc,
+                                                                     lc.shadowSrv.put());
+
                 e.add<scene::light>();
                 e.set<scene::light>(lc);
             }
-
         }
 
         cgltf_free(data);

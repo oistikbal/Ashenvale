@@ -164,9 +164,14 @@ void ashenvale::editor::inspector::render()
                     ImGui::SliderFloat("Intensity", &lt.intensity, 0.0f, 100.0f, "%.2f");
                     ImGui::ColorEdit3("Color", reinterpret_cast<float *>(&lt.color));
 
+                    if (lt.shadowSrv)
+                    {
+                        ImGui::Text("Shadow Map:");
+                        ImGui::Image((ImTextureID)(intptr_t)lt.shadowSrv.get(), ImVec2(256, 256));
+                    }
+
                     e.set<ashenvale::scene::light>(lt);
                 }
-
             }
         }
     }

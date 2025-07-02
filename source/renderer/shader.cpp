@@ -209,5 +209,6 @@ void ashenvale::renderer::shader::initialize()
     compile(g_pbrShader, L"pbr_vs.hlsl", L"pbr_ps.hlsl");
     compile(g_wireframeShader, nullptr, L"wireframe_ps.hlsl");
     compile(g_skydomeShader, L"skydome_vs.hlsl", L"skydome_ps.hlsl");
+    compile(g_shadowShader, L"shadow_vs.hlsl", nullptr);
     compile_gs(g_normalShader, L"normal_vs.hlsl", L"normal_ps.hlsl", L"normal_gs.hlsl");
 }

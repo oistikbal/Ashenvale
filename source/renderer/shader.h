@@ -41,6 +41,7 @@ inline shader g_quadShader;
 inline shader g_pbrShader;
 inline shader g_wireframeShader;
 inline shader g_skydomeShader;
+inline shader g_shadowShader;
 inline gs_shader g_normalShader;
 } // namespace ashenvale::renderer::shader
 

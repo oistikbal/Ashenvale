@@ -79,7 +79,7 @@ void ashenvale::renderer::render_pass::normal::execute(const render_pass_context
             renderer::device::g_context->IASetVertexBuffers(0, 1, vertexBuffers, &stride, &offset);
             renderer::device::g_context->IASetIndexBuffer(m.indexBuffer.get(), DXGI_FORMAT_R32_UINT, 0);
 
-            renderer::device::g_context->DrawIndexed(m.indexCount, 0, 0);
+            renderer::device::g_context->Draw(m.vertexCount, 0);
         }
     });
 }

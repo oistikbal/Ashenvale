@@ -21,6 +21,7 @@ struct mesh
     winrt::com_ptr<ID3D11Buffer> vertexBuffer = nullptr;
     winrt::com_ptr<ID3D11Buffer> indexBuffer = nullptr;
     uint32_t indexCount = 0;
+    uint32_t vertexCount = 0;
 };
 
 struct material_resource
@@ -86,6 +87,10 @@ struct light
     float range;
     float spot_inner_cone_angle;
     float spot_outer_cone_angle;
+
+    winrt::com_ptr<ID3D11Texture2D> shadowMap;
+    winrt::com_ptr<ID3D11ShaderResourceView> shadowSrv;
+    winrt::com_ptr<ID3D11DepthStencilView> shadowDepthView;
 };
 
 struct light_buffer

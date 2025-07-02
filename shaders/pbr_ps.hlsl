@@ -58,8 +58,9 @@ float3 CalcDirLight(Light light, PixelInputType input)
     float3 lightDir = normalize(light.position - input.worldPos);    
     float3 viewDir = normalize(cameraPosition - input.worldPos);
     float3 reflectDir = reflect(-lightDir, input.normal);
-    
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
+    float3 halfwayDir = normalize(lightDir + viewDir);
+
+    float spec = pow(max(dot(viewDir, halfwayDir), 0.0), 64);
     float3 specular = spec * light.color * light.intensity;
 
     float diff = max(dot(input.normal, lightDir), 0.0);
@@ -76,8 +77,10 @@ float3 CalcPointLight(Light light, PixelInputType input)
     float3 viewDir = normalize(cameraPosition - input.worldPos);
     float3 lightDir = normalize(light.position - input.worldPos);
     float3 reflectDir = reflect(-lightDir, input.normal);
+    float3 halfwayDir = normalize(lightDir + viewDir);
+
     
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
+    float spec = pow(max(dot(viewDir, halfwayDir), 0.0), 64);
     float3 specular = spec * light.color * light.intensity;
 
     float diff = max(dot(input.normal, lightDir), 0.0);
@@ -91,12 +94,27 @@ float3 CalcSpotLight(Light light, PixelInputType input)
     return float3(1.0f, 1.0f, 1.0f);
 }
 
+float3 SRGBToLinear(float3 color)
+{
+    return color <= 0.04045 ?
+        color / 12.92 :
+        pow((color + 0.055) / 1.055, 2.4);
+}
+
+float3 LinearToSRGB(float3 color)
+{
+    return color <= 0.0031308 ?
+        color * 12.92 :
+        1.055 * pow(color, 1.0 / 2.4) - 0.055;
+}
+
 float4 main(PixelInputType input) : SV_TARGET
 {
     float3 lightResult;
     
     for (uint i = 0; i < lightCount; i++)
     {
+   
         switch (lights[i].light_type)
         {
             case 0:
@@ -113,11 +131,11 @@ float4 main(PixelInputType input) : SV_TARGET
 
     float3 ambient = 0.1f * baseColorFactor.rgb;
 
-    float3 textureColor = albedoTexture.Sample(defaultSampler, input.tex).rgb;
+    float3 textureColor = SRGBToLinear(albedoTexture.Sample(defaultSampler, input.tex).rgb);
 
     float3 lighting = lightResult;
     float3 finalColor = textureColor * lighting * baseColorFactor.rgb;
 
-    return float4(finalColor, baseColorFactor.a);
+    return float4(LinearToSRGB(finalColor), baseColorFactor.a);
 
 }
