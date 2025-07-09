@@ -20,6 +20,8 @@ struct PixelInputType
     float4 position : SV_POSITION;
     float3 worldPos : TEXCOORD0;
     float3 normal : NORMAL;
+    float3 tangent : TANGENT;
+    float3 bitangent : BINORMAL;
     float2 tex : TEXCOORD1;
 };
 
@@ -35,5 +37,12 @@ PixelInputType main(VertexInputType input)
 
     output.tex = input.tex;
     output.normal = normalize(mul(input.normal, (float3x3) modelMatrix));
+    
+    output.tangent = normalize(mul(input.tangent, (float3x3) modelMatrix));
+
+    float3 bitangent = cross(input.normal, input.tangent);
+    
+    output.bitangent = normalize(mul(bitangent, (float3x3) modelMatrix));
+
     return output;
 }

@@ -25,6 +25,8 @@ struct PixelInputType
     float4 position : SV_POSITION;
     float3 worldPos : TEXCOORD0;
     float3 normal : NORMAL;
+    float3 tangent : TANGENT;
+    float3 bitangent : BINORMAL;
     float2 tex : TEXCOORD1;
 };
 
@@ -55,15 +57,20 @@ cbuffer LightMeta : register(b2)
 
 float3 CalcDirLight(Light light, PixelInputType input)
 {
+    float3 normalColor = normalTexture.Sample(defaultSampler, input.tex).xyz;
+    normalColor = (normalColor * 2.0 - 1.0);
+    normalColor = (normalColor.x * input.tangent) + (normalColor.y * input.bitangent) + (normalColor.z * input.normal);
+    normalColor = normalize(normalColor);
+
     float3 lightDir = normalize(light.position - input.worldPos);    
     float3 viewDir = normalize(cameraPosition - input.worldPos);
-    float3 reflectDir = reflect(-lightDir, input.normal);
+    float3 reflectDir = reflect(-lightDir, normalColor);
     float3 halfwayDir = normalize(lightDir + viewDir);
 
     float spec = pow(max(dot(viewDir, halfwayDir), 0.0), 64);
     float3 specular = spec * light.color * light.intensity;
-
-    float diff = max(dot(input.normal, lightDir), 0.0);
+    
+    float diff = max(dot(normalColor, lightDir), 0.0);
     float3 diffuse = diff * light.color * light.intensity;
  
     return (diffuse + specular);
@@ -71,19 +78,23 @@ float3 CalcDirLight(Light light, PixelInputType input)
 
 float3 CalcPointLight(Light light, PixelInputType input)
 {
+    float3 normalColor = normalTexture.Sample(defaultSampler, input.tex).xyz;
+    normalColor = (normalColor * 2.0 - 1.0);
+    normalColor = (normalColor.x * input.tangent) + (normalColor.y * input.bitangent) + (normalColor.z * input.normal);
+    normalColor = normalize(normalColor);
+   
     float distance = length(light.position - input.worldPos);
     float attenuation = 1.0f / (1.0f + light.linearr * distance + light.quadratic * distance * distance);
     
     float3 viewDir = normalize(cameraPosition - input.worldPos);
     float3 lightDir = normalize(light.position - input.worldPos);
-    float3 reflectDir = reflect(-lightDir, input.normal);
+    float3 reflectDir = reflect(-lightDir, normalColor);
     float3 halfwayDir = normalize(lightDir + viewDir);
 
-    
     float spec = pow(max(dot(viewDir, halfwayDir), 0.0), 64);
     float3 specular = spec * light.color * light.intensity;
 
-    float diff = max(dot(input.normal, lightDir), 0.0);
+    float diff = max(dot(normalColor, lightDir), 0.0);
     float3 diffuse = diff * light.color * light.intensity;
     
     return (diffuse + specular) * attenuation;
@@ -132,6 +143,7 @@ float4 main(PixelInputType input) : SV_TARGET
     float3 ambient = 0.1f * baseColorFactor.rgb;
 
     float3 textureColor = SRGBToLinear(albedoTexture.Sample(defaultSampler, input.tex).rgb);
+
 
     float3 lighting = lightResult;
     float3 finalColor = textureColor * lighting * baseColorFactor.rgb;
