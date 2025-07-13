@@ -9,8 +9,9 @@
 #include "render_passes/debug_wireframe_pass.h"
 #include "render_passes/editor_pass.h"
 #include "render_passes/geometry_pass.h"
-#include "render_passes/present_pass.h"
 #include "render_passes/normal_pass.h"
+#include "render_passes/present_pass.h"
+#include "render_passes/tonemap_pass.h"
 
 using namespace winrt;
 
@@ -23,6 +24,8 @@ ashenvale::renderer::render_pass::render_pass_info g_presentPassInfo = {};
 ashenvale::renderer::render_pass::render_pass_info g_debugDepthPassInfo = {};
 ashenvale::renderer::render_pass::render_pass_info g_debugWireframePassInfo = {};
 ashenvale::renderer::render_pass::render_pass_info g_debugNormalPassInfo = {};
+
+ashenvale::renderer::render_pass::render_pass_info g_tonemapPassInfo = {};
 } // namespace
 
 void ashenvale::renderer::render_pass::initialize()
@@ -34,6 +37,7 @@ void ashenvale::renderer::render_pass::initialize()
     debug_depth::initialize();
     debug_wireframe::initialize();
     normal::initialize();
+    tonemap::initialize();
 
     resize();
 }
@@ -89,6 +93,11 @@ void ashenvale::renderer::render_pass::resize()
     normalPassContext.rtv = renderer::g_viewportRTV.get();
     normalPassContext.dsv = renderer::g_viewportDSV.get();
     g_debugNormalPassInfo.context.normal = normalPassContext;
+
+    g_tonemapPassInfo.execute = tonemap::execute;
+    tonemap_pass_context tonemapCtx = {};
+    tonemapCtx.rtv = renderer::g_viewportRTV.get();
+    g_tonemapPassInfo.context.tonemap = tonemapCtx;
 }
 
 void ashenvale::renderer::render_pass::reset_pipeline()
@@ -110,10 +119,12 @@ void ashenvale::renderer::render_pass::render()
     case ashenvale::renderer::render_graph::render_path::forward:
         g_clearPassInfo.execute(g_clearPassInfo.context);
         g_geometryPassInfo.execute(g_geometryPassInfo.context);
+        //g_tonemapPassInfo.execute(g_tonemapPassInfo.context);
         break;
     case ashenvale::renderer::render_graph::render_path::deferred:
         g_clearPassInfo.execute(g_clearPassInfo.context);
         g_geometryPassInfo.execute(g_geometryPassInfo.context);
+        //g_tonemapPassInfo.execute(g_tonemapPassInfo.context);
         break;
     }
 

@@ -7,6 +7,7 @@
 #include "renderer/shader.h"
 #include "scene/scene.h"
 #include "scene/skydome.h"
+#include "tonemap_pass.h"
 #include <d3d11_4.h>
 #include <winrt/base.h>
 
@@ -209,11 +210,11 @@ void ashenvale::renderer::render_pass::geometry::execute(const render_pass_conte
 
     ////////////////////////////////////
 
-    scene::skydome::render();
-
     ID3D11RenderTargetView *const rtvs[] = {context.geometry.rtv};
     ashenvale::renderer::device::g_context->OMSetRenderTargets(1, rtvs, context.geometry.dsv);
     ashenvale::renderer::device::g_context->RSSetViewports(1, &ashenvale::renderer::g_viewportViewport);
+
+    scene::skydome::render();
 
     D3D11_MAPPED_SUBRESOURCE mapped;
     renderer::device::g_context->Map(g_lightBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
@@ -255,6 +256,10 @@ void ashenvale::renderer::render_pass::geometry::execute(const render_pass_conte
 
         ID3D11Buffer *const lightMetaBuffer[] = {g_lightMetaBuffer.get()};
         renderer::device::g_context->PSSetConstantBuffers(2, 1, lightMetaBuffer);
+
+        ID3D11Buffer *const exposureBuffer[] = {tonemap::g_exposureBuffer.get()};
+        renderer::device::g_context->PSSetConstantBuffers(3, 1, exposureBuffer);
+
         ID3D11ShaderResourceView *const shadowSrv[] = {g_shadowMapArraySrv.get()};
         renderer::device::g_context->PSSetShaderResources(3, 1, shadowSrv);
 

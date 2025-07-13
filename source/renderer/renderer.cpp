@@ -36,10 +36,10 @@ void ashenvale::renderer::resize_viewport(int width, int height)
     colorDesc.Height = height;
     colorDesc.MipLevels = 1;
     colorDesc.ArraySize = 1;
-    colorDesc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
+    colorDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     colorDesc.SampleDesc.Count = 1;
     colorDesc.Usage = D3D11_USAGE_DEFAULT;
-    colorDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    colorDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 
     renderer::device::g_device->CreateTexture2D(&colorDesc, nullptr, g_viewportTexture.put());
     renderer::device::g_device->CreateRenderTargetView(g_viewportTexture.get(), nullptr, g_viewportRTV.put());
@@ -75,6 +75,9 @@ void ashenvale::renderer::resize_viewport(int width, int height)
 
     renderer::device::g_device->CreateShaderResourceView(g_viewportDepthStencil.get(), &srvDesc,
                                                          g_viewportDepthSRV.put());
+
+    renderer::device::g_device->CreateUnorderedAccessView(g_viewportTexture.get(), nullptr,
+                                                          g_viewportUAV.put());
 
     g_viewportViewport = {};
     g_viewportViewport.Width = static_cast<float>(width);

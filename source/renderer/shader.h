@@ -37,7 +37,8 @@ struct gs_shader
     std::vector<resource_binding> psBindings;
 };
 
-inline shader g_quadShader;
+inline shader g_depthShader;
+inline shader g_viewportShader;
 inline shader g_pbrShader;
 inline shader g_wireframeShader;
 inline shader g_skydomeShader;

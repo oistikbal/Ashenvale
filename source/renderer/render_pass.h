@@ -40,6 +40,11 @@ struct normal_pass_context
     ID3D11DepthStencilView *dsv;
 };
 
+struct tonemap_pass_context
+{
+    ID3D11RenderTargetView *rtv;
+};
+
 struct debug_depth_pass_context
 {
     ID3D11RenderTargetView *rtv;
@@ -61,6 +66,7 @@ union render_pass_context {
     debug_depth_pass_context debug_depth;
     debug_wireframe_pass_context debug_wireframe;
     normal_pass_context normal;
+    tonemap_pass_context tonemap;
 };
 
 using render_pass_execute = void (*)(const render_pass_context &);

@@ -8,6 +8,7 @@ namespace ashenvale::renderer
 	inline winrt::com_ptr<ID3D11Texture2D> g_viewportTexture = nullptr;
 	inline winrt::com_ptr<ID3D11RenderTargetView> g_viewportRTV = nullptr;
 	inline winrt::com_ptr<ID3D11ShaderResourceView> g_viewportSRV = nullptr;
+    inline winrt::com_ptr<ID3D11UnorderedAccessView> g_viewportUAV = nullptr;
 
 	inline winrt::com_ptr<ID3D11Texture2D> g_viewportDepthStencil = nullptr;
 	inline winrt::com_ptr<ID3D11DepthStencilView> g_viewportDSV = nullptr;
