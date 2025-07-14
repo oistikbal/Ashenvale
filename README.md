@@ -12,7 +12,7 @@ DirectX11 Renderer
 
 ![](.github/1.jpg)
 
-[](.github/2.gif)
+[](https://github.com/oistikbal/ashenvale/blob/master/.github/debug_gif.gif)
 
 ## License
 This project is licensed under the [MIT License](LICENSE).
