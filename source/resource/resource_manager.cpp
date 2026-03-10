@@ -80,17 +80,19 @@ resource *rm_find(const uuid &id)
 }
 
 resource rm_create_buffer(const D3D12_RESOURCE_DESC &resource_desc, const D3D12MA::ALLOCATION_DESC &allocation_desc,
-                          const D3D12_RESOURCE_STATES resource_state, const void *initial_data, const uint64_t size)
+                          const D3D12_RESOURCE_STATES resource_state, const void *initial_data,
+                          uint64_t initial_data_size, uint32_t stride)
 {
     resource_buffer buffer = {};
-    buffer.size = size != 0 ? static_cast<uint32_t>(size) : static_cast<uint32_t>(resource_desc.Width);
+    buffer.size =
+        initial_data_size != 0 ? static_cast<uint32_t>(initial_data_size) : static_cast<uint32_t>(resource_desc.Width);
     buffer.stride = 0;
 
     const HRESULT hr = rhi_g_allocator->CreateResource(&allocation_desc, &resource_desc, resource_state, nullptr,
                                                        buffer.allocation.put(), IID_PPV_ARGS(buffer.resource.put()));
     assert(SUCCEEDED(hr));
 
-    upload_buffer_data(buffer.allocation->GetResource(), initial_data, size);
+    upload_buffer_data(buffer.allocation->GetResource(), initial_data, initial_data_size);
 
     const resource_handle handle = pool_add(g_buffers, std::move(buffer));
     return register_resource(resource_type::buffer, handle);

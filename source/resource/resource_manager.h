@@ -52,28 +52,6 @@ struct resource_mesh
     uint32_t index_count = 0;
 };
 
-struct resource_buffer_desc
-{
-    const void *data = nullptr;
-    uint32_t size = 0;
-    uint32_t stride = 0;
-};
-
-struct resource_texture_desc
-{
-    const void *data = nullptr;
-    uint32_t width = 0;
-    uint32_t height = 0;
-    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
-};
-
-struct resource_mesh_desc
-{
-    resource_handle vertex_buffer = invalid_resource_handle;
-    resource_handle index_buffer = invalid_resource_handle;
-    uint32_t index_count = 0;
-};
-
 void rm_init();
 void rm_shutdown();
 

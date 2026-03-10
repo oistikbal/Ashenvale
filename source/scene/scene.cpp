@@ -5,14 +5,18 @@
 #include "renderer/core/swapchain.h"
 #include "renderer/pipeline/pipeline.h"
 #include "renderer/renderer.h"
+#include "resource/resource_manager.h"
 #include "scene/camera.h"
 #include <common.h>
 #include <fastgltf/core.hpp>
 #include <fastgltf/math.hpp>
+#include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <iostream>
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -21,6 +25,14 @@ using namespace DirectX;
 
 namespace
 {
+struct vertex
+{
+    DirectX::XMFLOAT3 position = {};
+    DirectX::XMFLOAT3 normal = {0.0f, 0.0f, 1.0f};
+    DirectX::XMFLOAT4 tangent = {1.0f, 0.0f, 0.0f, 1.0f};
+    DirectX::XMFLOAT2 uv = {};
+};
+
 inline com_ptr<D3D12MA::Allocation> g_scene_buffer;
 
 flecs::entity lookup_name_in_scope(const std::string &name, flecs::entity parent)
@@ -31,6 +43,167 @@ flecs::entity lookup_name_in_scope(const std::string &name, flecs::entity parent
     }
 
     return ash::scene_g_world.lookup(name.c_str(), "::", "::", false);
+}
+
+D3D12_RESOURCE_DESC make_upload_buffer_desc(uint64_t size)
+{
+    D3D12_RESOURCE_DESC desc = {};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    desc.Alignment = 0;
+    desc.Width = size;
+    desc.Height = 1;
+    desc.DepthOrArraySize = 1;
+    desc.MipLevels = 1;
+    desc.Format = DXGI_FORMAT_UNKNOWN;
+    desc.SampleDesc.Count = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    return desc;
+}
+
+D3D12MA::ALLOCATION_DESC make_upload_allocation_desc()
+{
+    D3D12MA::ALLOCATION_DESC desc = {};
+    desc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+    return desc;
+}
+
+const fastgltf::Attribute *find_primitive_attribute(const fastgltf::Primitive &primitive, std::string_view name)
+{
+    for (const fastgltf::Attribute &attribute : primitive.attributes)
+    {
+        if (attribute.name == name)
+        {
+            return &attribute;
+        }
+    }
+
+    return nullptr;
+}
+
+bool import_gltf_mesh_resource(const fastgltf::Asset &asset, std::size_t mesh_index, ash::mesh_component &out_mesh)
+{
+    if (mesh_index >= asset.meshes.size())
+    {
+        return false;
+    }
+
+    const fastgltf::Mesh &mesh = asset.meshes[mesh_index];
+    if (mesh.primitives.empty())
+    {
+        return false;
+    }
+
+    const fastgltf::Primitive &primitive = mesh.primitives.front();
+    if (primitive.type != fastgltf::PrimitiveType::Triangles)
+    {
+        ash::ed_console_log(ash::ed_console_log_level::warning,
+                            "[Scene] glTF mesh import skipped: only triangle primitives are supported.");
+        return false;
+    }
+
+    const fastgltf::Attribute *position_attribute = find_primitive_attribute(primitive, "POSITION");
+    if (!position_attribute || position_attribute->accessorIndex >= asset.accessors.size())
+    {
+        ash::ed_console_log(ash::ed_console_log_level::warning,
+                            "[Scene] glTF mesh import skipped: POSITION attribute missing.");
+        return false;
+    }
+
+    const fastgltf::Accessor &position_accessor = asset.accessors[position_attribute->accessorIndex];
+    std::vector<vertex> vertices(position_accessor.count);
+    fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
+        asset, position_accessor, [&](const fastgltf::math::fvec3 &position, std::size_t index) {
+            vertices[index].position = {position[0], position[1], position[2]};
+        });
+
+    if (const fastgltf::Attribute *normal_attribute = find_primitive_attribute(primitive, "NORMAL");
+        normal_attribute && normal_attribute->accessorIndex < asset.accessors.size())
+    {
+        const fastgltf::Accessor &normal_accessor = asset.accessors[normal_attribute->accessorIndex];
+        fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
+            asset, normal_accessor, [&](const fastgltf::math::fvec3 &normal, std::size_t index) {
+                if (index < vertices.size())
+                {
+                    vertices[index].normal = {normal[0], normal[1], normal[2]};
+                }
+            });
+    }
+
+    if (const fastgltf::Attribute *tangent_attribute = find_primitive_attribute(primitive, "TANGENT");
+        tangent_attribute && tangent_attribute->accessorIndex < asset.accessors.size())
+    {
+        const fastgltf::Accessor &tangent_accessor = asset.accessors[tangent_attribute->accessorIndex];
+        fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(
+            asset, tangent_accessor, [&](const fastgltf::math::fvec4 &tangent, std::size_t index) {
+                if (index < vertices.size())
+                {
+                    vertices[index].tangent = {tangent[0], tangent[1], tangent[2], tangent[3]};
+                }
+            });
+    }
+
+    if (const fastgltf::Attribute *uv_attribute = find_primitive_attribute(primitive, "TEXCOORD_0");
+        uv_attribute && uv_attribute->accessorIndex < asset.accessors.size())
+    {
+        const fastgltf::Accessor &uv_accessor = asset.accessors[uv_attribute->accessorIndex];
+        fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(
+            asset, uv_accessor, [&](const fastgltf::math::fvec2 &uv, std::size_t index) {
+                if (index < vertices.size())
+                {
+                    vertices[index].uv = {uv[0], uv[1]};
+                }
+            });
+    }
+
+    if (vertices.empty())
+    {
+        ash::ed_console_log(ash::ed_console_log_level::warning,
+                            "[Scene] glTF mesh import skipped: mesh has no vertices.");
+        return false;
+    }
+
+    std::vector<std::uint32_t> indices;
+    if (primitive.indicesAccessor.has_value() && primitive.indicesAccessor.value() < asset.accessors.size())
+    {
+        const fastgltf::Accessor &index_accessor = asset.accessors[primitive.indicesAccessor.value()];
+        indices.reserve(index_accessor.count);
+        fastgltf::iterateAccessor<std::uint32_t>(asset, index_accessor, [&](std::uint32_t index) { indices.push_back(index); });
+    }
+    else
+    {
+        indices.resize(vertices.size());
+        std::iota(indices.begin(), indices.end(), 0u);
+    }
+
+    if (indices.empty())
+    {
+        ash::ed_console_log(ash::ed_console_log_level::warning,
+                            "[Scene] glTF mesh import skipped: mesh has no indices.");
+        return false;
+    }
+
+    const D3D12MA::ALLOCATION_DESC allocation_desc = make_upload_allocation_desc();
+    const ash::resource vertex_buffer =
+        ash::rm_create_buffer(make_upload_buffer_desc(sizeof(vertex) * vertices.size()), allocation_desc,
+                              D3D12_RESOURCE_STATE_GENERIC_READ, vertices.data(), sizeof(vertex) * vertices.size());
+    const ash::resource index_buffer =
+        ash::rm_create_buffer(make_upload_buffer_desc(sizeof(std::uint32_t) * indices.size()), allocation_desc,
+                              D3D12_RESOURCE_STATE_GENERIC_READ, indices.data(),
+                              sizeof(std::uint32_t) * indices.size());
+    const ash::resource mesh_resource =
+        ash::rm_create_mesh(vertex_buffer.handle, index_buffer.handle, static_cast<uint32_t>(indices.size()));
+
+    out_mesh.mesh_id = mesh_resource.id;
+
+    if (mesh.primitives.size() > 1)
+    {
+        ash::ed_console_log(ash::ed_console_log_level::warning,
+                       "[Scene] glTF mesh has multiple primitives. Only the first primitive was imported.");
+    }
+
+    return true;
 }
 } // namespace
 
@@ -90,20 +263,20 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
 
     if (!std::filesystem::exists(path))
     {
-        std::cerr << "glTF import failed. File does not exist: " << path << '\n';
         ed_console_log(ed_console_log_level::error, "glTF import failed: file does not exist.");
         return false;
     }
 
-    fastgltf::Parser parser(fastgltf::Extensions::KHR_mesh_quantization);
-    constexpr auto options = fastgltf::Options::DontRequireValidAssetMember | fastgltf::Options::DecomposeNodeMatrices;
+    fastgltf::Parser parser(fastgltf::Extensions::KHR_mesh_quantization | fastgltf::Extensions::KHR_lights_punctual);
+    constexpr auto options = fastgltf::Options::DontRequireValidAssetMember | fastgltf::Options::DecomposeNodeMatrices |
+                             fastgltf::Options::LoadExternalBuffers;
     constexpr auto categories =
-        fastgltf::Category::Asset | fastgltf::Category::Scenes | fastgltf::Category::Nodes | fastgltf::Category::Meshes;
+        fastgltf::Category::Asset | fastgltf::Category::Scenes | fastgltf::Category::Nodes | fastgltf::Category::Meshes |
+        fastgltf::Category::Buffers | fastgltf::Category::BufferViews | fastgltf::Category::Accessors;
 
     auto gltf_file = fastgltf::MappedGltfFile::FromPath(path);
     if (!bool(gltf_file))
     {
-        std::cerr << "glTF import failed to open file: " << fastgltf::getErrorMessage(gltf_file.error()) << '\n';
         ed_console_log(ed_console_log_level::error, "glTF import failed: unable to open file.");
         return false;
     }
@@ -111,15 +284,13 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
     auto loaded_asset = parser.loadGltf(gltf_file.get(), path.parent_path(), options, categories);
     if (loaded_asset.error() != fastgltf::Error::None)
     {
-        std::cerr << "glTF import failed to parse file: " << fastgltf::getErrorMessage(loaded_asset.error()) << '\n';
-        ed_console_log(ed_console_log_level::error, "glTF import failed: parse error.");
+        ed_console_log(ed_console_log_level::error, std::format("glTF import failed: {}.", fastgltf::getErrorMessage(loaded_asset.error())));
         return false;
     }
 
     fastgltf::Asset asset = std::move(loaded_asset.get());
     if (asset.scenes.empty())
     {
-        std::cerr << "glTF import failed: no scenes in file.\n";
         ed_console_log(ed_console_log_level::error, "glTF import failed: no scenes in file.");
         return false;
     }
@@ -182,6 +353,15 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
             entity.child_of(parent);
         }
         scene_set_entity_name_safe(entity, node_name);
+
+        if (node.meshIndex.has_value())
+        {
+            ash::mesh_component mesh_component = {};
+            if (import_gltf_mesh_resource(asset, node.meshIndex.value(), mesh_component))
+            {
+                entity.set<ash::mesh_component>(mesh_component);
+            }
+        }
 
         for (std::size_t child_node_index : node.children)
         {

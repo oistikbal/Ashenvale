@@ -3,6 +3,7 @@
 #include "editor/editor.h"
 #include "renderer/core/swapchain.h"
 #include "renderer/renderer.h"
+#include "resource/resource_manager.h"
 #include "scene/scene.h"
 #include "window/input.h"
 #include <imgui/imgui_impl_win32.h>
@@ -92,6 +93,7 @@ void ash::win_init(HINSTANCE hInstance, PWSTR pCmdLine, int nCmdShow)
     ShowWindow(win_g_hwnd, SW_SHOWMAXIMIZED);
     UpdateWindow(win_g_hwnd);
     rhi_init();
+    rm_init();
     ed_init();
     scene_init();
 
@@ -139,6 +141,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     case WM_DESTROY:
         ash::ed_console_log(ash::ed_console_log_level::info, "[App] Shutdown sequence begin.");
+        ash::rm_shutdown();
         ash::rhi_stop();
         ash::scene_shutdown();
         ash::ed_shutdown();
