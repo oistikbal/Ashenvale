@@ -141,8 +141,8 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     case WM_DESTROY:
         ash::ed_console_log(ash::ed_console_log_level::info, "[App] Shutdown sequence begin.");
-        ash::rm_shutdown();
         ash::rhi_stop();
+        ash::rm_shutdown();
         ash::scene_shutdown();
         ash::ed_shutdown();
         ash::rhi_shutdown();

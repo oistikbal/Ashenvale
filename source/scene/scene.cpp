@@ -8,11 +8,11 @@
 #include "resource/resource_manager.h"
 #include "scene/camera.h"
 #include <common.h>
+#include <cstdint>
 #include <fastgltf/core.hpp>
 #include <fastgltf/math.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
-#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <iostream>
@@ -82,24 +82,11 @@ const fastgltf::Attribute *find_primitive_attribute(const fastgltf::Primitive &p
     return nullptr;
 }
 
-bool import_gltf_mesh_resource(const fastgltf::Asset &asset, std::size_t mesh_index, ash::mesh_component &out_mesh)
+bool import_gltf_primitive_resource(const fastgltf::Asset &asset, const fastgltf::Primitive &primitive,
+                                    ash::mesh_component &out_mesh)
 {
-    if (mesh_index >= asset.meshes.size())
-    {
-        return false;
-    }
-
-    const fastgltf::Mesh &mesh = asset.meshes[mesh_index];
-    if (mesh.primitives.empty())
-    {
-        return false;
-    }
-
-    const fastgltf::Primitive &primitive = mesh.primitives.front();
     if (primitive.type != fastgltf::PrimitiveType::Triangles)
     {
-        ash::ed_console_log(ash::ed_console_log_level::warning,
-                            "[Scene] glTF mesh import skipped: only triangle primitives are supported.");
         return false;
     }
 
@@ -169,7 +156,8 @@ bool import_gltf_mesh_resource(const fastgltf::Asset &asset, std::size_t mesh_in
     {
         const fastgltf::Accessor &index_accessor = asset.accessors[primitive.indicesAccessor.value()];
         indices.reserve(index_accessor.count);
-        fastgltf::iterateAccessor<std::uint32_t>(asset, index_accessor, [&](std::uint32_t index) { indices.push_back(index); });
+        fastgltf::iterateAccessor<std::uint32_t>(asset, index_accessor,
+                                                 [&](std::uint32_t index) { indices.push_back(index); });
     }
     else
     {
@@ -188,21 +176,13 @@ bool import_gltf_mesh_resource(const fastgltf::Asset &asset, std::size_t mesh_in
     const ash::resource vertex_buffer =
         ash::rm_create_buffer(make_upload_buffer_desc(sizeof(vertex) * vertices.size()), allocation_desc,
                               D3D12_RESOURCE_STATE_GENERIC_READ, vertices.data(), sizeof(vertex) * vertices.size());
-    const ash::resource index_buffer =
-        ash::rm_create_buffer(make_upload_buffer_desc(sizeof(std::uint32_t) * indices.size()), allocation_desc,
-                              D3D12_RESOURCE_STATE_GENERIC_READ, indices.data(),
-                              sizeof(std::uint32_t) * indices.size());
+    const ash::resource index_buffer = ash::rm_create_buffer(
+        make_upload_buffer_desc(sizeof(std::uint32_t) * indices.size()), allocation_desc,
+        D3D12_RESOURCE_STATE_GENERIC_READ, indices.data(), sizeof(std::uint32_t) * indices.size());
     const ash::resource mesh_resource =
         ash::rm_create_mesh(vertex_buffer.handle, index_buffer.handle, static_cast<uint32_t>(indices.size()));
 
-    out_mesh.mesh_id = mesh_resource.id;
-
-    if (mesh.primitives.size() > 1)
-    {
-        ash::ed_console_log(ash::ed_console_log_level::warning,
-                       "[Scene] glTF mesh has multiple primitives. Only the first primitive was imported.");
-    }
-
+    out_mesh.handle = mesh_resource.handle;
     return true;
 }
 } // namespace
@@ -270,9 +250,9 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
     fastgltf::Parser parser(fastgltf::Extensions::KHR_mesh_quantization | fastgltf::Extensions::KHR_lights_punctual);
     constexpr auto options = fastgltf::Options::DontRequireValidAssetMember | fastgltf::Options::DecomposeNodeMatrices |
                              fastgltf::Options::LoadExternalBuffers;
-    constexpr auto categories =
-        fastgltf::Category::Asset | fastgltf::Category::Scenes | fastgltf::Category::Nodes | fastgltf::Category::Meshes |
-        fastgltf::Category::Buffers | fastgltf::Category::BufferViews | fastgltf::Category::Accessors;
+    constexpr auto categories = fastgltf::Category::Asset | fastgltf::Category::Scenes | fastgltf::Category::Nodes |
+                                fastgltf::Category::Meshes | fastgltf::Category::Buffers |
+                                fastgltf::Category::BufferViews | fastgltf::Category::Accessors;
 
     auto gltf_file = fastgltf::MappedGltfFile::FromPath(path);
     if (!bool(gltf_file))
@@ -284,7 +264,8 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
     auto loaded_asset = parser.loadGltf(gltf_file.get(), path.parent_path(), options, categories);
     if (loaded_asset.error() != fastgltf::Error::None)
     {
-        ed_console_log(ed_console_log_level::error, std::format("glTF import failed: {}.", fastgltf::getErrorMessage(loaded_asset.error())));
+        ed_console_log(ed_console_log_level::error,
+                       std::format("glTF import failed: {}.", fastgltf::getErrorMessage(loaded_asset.error())));
         return false;
     }
 
@@ -356,10 +337,40 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
 
         if (node.meshIndex.has_value())
         {
-            ash::mesh_component mesh_component = {};
-            if (import_gltf_mesh_resource(asset, node.meshIndex.value(), mesh_component))
+            const std::size_t mesh_index = node.meshIndex.value();
+            if (mesh_index < asset.meshes.size())
             {
-                entity.set<ash::mesh_component>(mesh_component);
+                const fastgltf::Mesh &mesh = asset.meshes[mesh_index];
+                std::size_t imported_primitive_count = 0;
+
+                for (std::size_t primitive_index = 0; primitive_index < mesh.primitives.size(); ++primitive_index)
+                {
+                    ash::mesh_component mesh_component = {};
+                    if (!import_gltf_primitive_resource(asset, mesh.primitives[primitive_index], mesh_component))
+                    {
+                        continue;
+                    }
+
+                    flecs::entity primitive_entity =
+                        scene_g_world.entity().add<ash::game_object>().set<ash::transform>({});
+                    primitive_entity.child_of(entity);
+
+                    std::string primitive_name = node_name + " Primitive " + std::to_string(primitive_index);
+                    scene_set_entity_name_safe(primitive_entity, primitive_name);
+                    primitive_entity.set<ash::mesh_component>(mesh_component);
+                    ++imported_primitive_count;
+                }
+
+                if (mesh.primitives.empty())
+                {
+                    ash::ed_console_log(ash::ed_console_log_level::warning,
+                                        "[Scene] glTF mesh import skipped: mesh has no primitives.");
+                }
+                else if (imported_primitive_count == 0)
+                {
+                    ash::ed_console_log(ash::ed_console_log_level::warning,
+                                        "[Scene] glTF mesh import skipped: no supported triangle primitives.");
+                }
             }
         }
 
@@ -428,8 +439,7 @@ void ash::scene_render()
         cam_update_view_mat(g_camera);
         cam_update_proj_mat(g_camera, XM_PI / 3, rhi_sw_g_viewport.Width / rhi_sw_g_viewport.Height, 0.1f, 1000.0f);
 
-        XMFLOAT4X4 view_proj = {};
-        DirectX::XMStoreFloat4x4(&view_proj, cam_get_view_proj_mat(g_camera));
+        XMMATRIX view_proj = cam_get_view_proj_mat(g_camera);
 
         auto &command_list = rhi_cmd_g_command_list;
         {
@@ -440,7 +450,7 @@ void ash::scene_render()
             ID3D12DescriptorHeap *heap[] = {rhi_g_cbv_srv_uav_heap.get(), rhi_g_sampler_heap.get()};
             command_list->SetDescriptorHeaps(2, heap);
 
-            command_list->SetGraphicsRootSignature(rhi_pl_g_triangle_instanced.root_signature.get());
+            command_list->SetGraphicsRootSignature(rhi_pl_g_geometry.root_signature.get());
 
             D3D12_RESOURCE_BARRIER barrier = {};
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -460,38 +470,37 @@ void ash::scene_render()
             command_list->ClearRenderTargetView(viewport_rtv_handle, clear_color, 0, nullptr);
             command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-            command_list->SetPipelineState(rhi_pl_g_triangle_instanced.pso.get());
+            command_list->SetPipelineState(rhi_pl_g_geometry.pso.get());
             command_list->RSSetViewports(1, &rhi_g_viewport);
             D3D12_RECT scissorRect = {0, 0, static_cast<UINT>(rhi_g_viewport.Width),
                                       static_cast<UINT>(rhi_g_viewport.Height)};
             command_list->RSSetScissorRects(1, &scissorRect);
             command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-            struct SceneData
-            {
-                XMFLOAT4X4 vp;
-                uint32_t buffer_id;
-            };
 
-            SceneData sd;
-            sd.vp = view_proj;
-            sd.buffer_id = 5;
+            scene_g_world.each([&](flecs::entity e, transform &t, mesh_component &m) {
+                XMFLOAT4X4 mvp;
+                XMStoreFloat4x4(&mvp, get_world_transform_matrix(e) * view_proj);
+                command_list->SetGraphicsRoot32BitConstants(0, 16, &mvp, 0);
 
-            command_list->SetGraphicsRoot32BitConstants(0, 17, &sd, 0);
 
-            XMFLOAT4X4 *mapped_data;
-            uint32_t id = 0;
-            g_scene_buffer->GetResource()->Map(0, nullptr, reinterpret_cast<void **>(&mapped_data));
-            scene_g_world.each([&](flecs::entity e, transform &t) {
-                DirectX::XMStoreFloat4x4(&mapped_data[id], get_world_transform_matrix(e));
-                id++;
+                D3D12_VERTEX_BUFFER_VIEW vbv = {};
+                vbv.BufferLocation =
+                    rm_get_buffer(rm_get_mesh(m.handle)->vertex_buffer)->resource->GetGPUVirtualAddress();
+                vbv.StrideInBytes = sizeof(vertex);
+                vbv.SizeInBytes = rm_get_buffer(rm_get_mesh(m.handle)->vertex_buffer)->size;
+
+                D3D12_INDEX_BUFFER_VIEW ibv = {};
+                ibv.BufferLocation =
+                    rm_get_buffer(rm_get_mesh(m.handle)->index_buffer)->resource->GetGPUVirtualAddress();
+                ibv.Format = DXGI_FORMAT_R32_UINT;
+                ibv.SizeInBytes = rm_get_buffer(rm_get_mesh(m.handle)->index_buffer)->size;
+
+                command_list->IASetVertexBuffers(0, 1, &vbv);
+                command_list->IASetIndexBuffer(&ibv);
+
+                command_list->DrawIndexedInstanced(rm_get_mesh(m.handle)->index_count, 1, 0, 0, 0);
             });
-            g_scene_buffer->GetResource()->Unmap(0, nullptr);
-
-            if (id > 0)
-            {
-                command_list->DrawInstanced(3, id, 0, 0);
-            }
 
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier.Transition.pResource = rhi_g_viewport_texture->GetResource();

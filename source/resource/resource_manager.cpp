@@ -60,6 +60,9 @@ namespace ash
 {
 void rm_init()
 {
+    g_buffers.reserve(512);
+    g_textures.reserve(64);
+    g_meshes.reserve(64);
 }
 
 void rm_shutdown()
@@ -127,5 +130,17 @@ resource rm_create_mesh(resource_handle vertex_buffer, resource_handle index_buf
 
     const resource_handle handle = pool_add(g_meshes, std::move(mesh));
     return register_resource(resource_type::mesh, handle);
+}
+resource_mesh* rm_get_mesh(resource_handle handle)
+{
+    return pool_get(g_meshes, handle);
+}
+resource_texture* rm_get_texture(resource_handle handle)
+{
+    return pool_get(g_textures, handle);
+}
+resource_buffer* rm_get_buffer(resource_handle handle)
+{
+    return pool_get(g_buffers, handle);
 }
 } // namespace ash

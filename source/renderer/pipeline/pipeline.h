@@ -12,11 +12,10 @@ struct rhi_pl_pipeline_state
 };
 inline rhi_pl_pipeline_state rhi_pl_g_triangle;
 inline rhi_pl_pipeline_state rhi_pl_g_triangle_instanced;
+inline rhi_pl_pipeline_state rhi_pl_g_geometry;
 } // namespace ash
 
 namespace ash
 {
 void rhi_pl_init();
 }
-
-

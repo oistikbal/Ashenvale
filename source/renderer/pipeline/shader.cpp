@@ -10,7 +10,6 @@ void init_shader(ash::rhi_sh_shader &shader, const wchar_t *file, const wchar_t 
     com_ptr<IDxcBlobUtf8> error_blob;
     com_ptr<IDxcResult> result;
 
-    com_ptr<ID3D12ShaderReflection> reflector;
     com_ptr<IDxcBlob> reflection_blob;
 
     ash::rhi_sc_compile(file, entryPoint, target, result.put(), error_blob.put());
@@ -25,10 +24,10 @@ void init_shader(ash::rhi_sh_shader &shader, const wchar_t *file, const wchar_t 
         .Encoding = 0,
     };
 
-    ash::rhi_sc_g_utils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(reflector.put()));
+    ash::rhi_sc_g_utils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(shader.reflector.put()));
 
-    shader.input_layout = ash::rhi_sc_get_input_layout(reflector.get());
-    shader.bindings = ash::rhi_sc_get_bindings(reflector.get());
+    shader.input_layout = ash::rhi_sc_get_input_layout(shader.reflector.get());
+    shader.bindings = ash::rhi_sc_get_bindings(shader.reflector.get());
 }
 } // namespace
 
@@ -39,4 +38,7 @@ void ash::rhi_sh_init()
 
     init_shader(rhi_sh_g_triangle_instanced_vs, L"triangle_instanced.hlsl", L"vs_main", L"vs_6_6");
     init_shader(rhi_sh_g_triangle_instanced_ps, L"triangle_instanced.hlsl", L"ps_main", L"ps_6_6");
+
+    init_shader(rhi_sh_g_geometry_vs, L"geometry.hlsl", L"vs_main", L"vs_6_6");
+    init_shader(rhi_sh_g_geometry_ps, L"geometry.hlsl", L"ps_main", L"ps_6_6");
 }

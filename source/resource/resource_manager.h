@@ -57,11 +57,15 @@ void rm_shutdown();
 
 resource *rm_find(const uuid &id);
 resource rm_create_buffer(const D3D12_RESOURCE_DESC &resource_desc, const D3D12MA::ALLOCATION_DESC &allocation_desc,
-                          const D3D12_RESOURCE_STATES resource_state,const void *initial_data = nullptr, uint64_t initial_data_size = 0,
-                          uint32_t stride = 0);
+                          const D3D12_RESOURCE_STATES resource_state, const void *initial_data = nullptr,
+                          uint64_t initial_data_size = 0, uint32_t stride = 0);
 
 resource rm_create_texture(const D3D12_RESOURCE_DESC &resource_desc, const D3D12MA::ALLOCATION_DESC &allocation_desc,
                            const D3D12_RESOURCE_STATES resource_state, const void *data, const uint64_t size);
 
 resource rm_create_mesh(resource_handle vertex_buffer, resource_handle index_buffer, uint32_t index_count);
+
+resource_mesh *rm_get_mesh(resource_handle handle);
+resource_texture *rm_get_texture(resource_handle handle);
+resource_buffer *rm_get_buffer(resource_handle handle);
 } // namespace ash

@@ -2,7 +2,6 @@
 
 #include <DirectXMath.h>
 #include <flecs.h>
-#include <resource/uuid.h>
 #include <vector>
 
 namespace ash
@@ -20,7 +19,7 @@ struct transform
 
 struct mesh_component
 {
-    uuid mesh_id = {};
+    uint32_t handle = {};
 };
 
 inline DirectX::XMMATRIX get_local_transform_matrix(const ash::transform &transform)
