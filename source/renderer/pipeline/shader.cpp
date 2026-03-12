@@ -33,12 +33,6 @@ void init_shader(ash::rhi_sh_shader &shader, const wchar_t *file, const wchar_t 
 
 void ash::rhi_sh_init()
 {
-    init_shader(rhi_sh_g_triangle_vs, L"triangle.hlsl", L"vs_main", L"vs_6_6");
-    init_shader(rhi_sh_g_triangle_ps, L"triangle.hlsl", L"ps_main", L"ps_6_6");
-
-    init_shader(rhi_sh_g_triangle_instanced_vs, L"triangle_instanced.hlsl", L"vs_main", L"vs_6_6");
-    init_shader(rhi_sh_g_triangle_instanced_ps, L"triangle_instanced.hlsl", L"ps_main", L"ps_6_6");
-
-    init_shader(rhi_sh_g_geometry_vs, L"geometry.hlsl", L"vs_main", L"vs_6_6");
-    init_shader(rhi_sh_g_geometry_ps, L"geometry.hlsl", L"ps_main", L"ps_6_6");
+    init_shader(rhi_sh_g_object_vs, L"object.hlsl", L"vs_main", L"vs_6_6");
+    init_shader(rhi_sh_g_object_ps, L"object.hlsl", L"ps_main", L"ps_6_6");
 }

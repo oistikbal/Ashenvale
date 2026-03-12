@@ -23,14 +23,8 @@ struct rhi_sh_shader
     std::vector<rhi_sh_resource_binding> bindings;
 };
 
-inline rhi_sh_shader rhi_sh_g_triangle_vs;
-inline rhi_sh_shader rhi_sh_g_triangle_ps;
-
-inline rhi_sh_shader rhi_sh_g_triangle_instanced_vs;
-inline rhi_sh_shader rhi_sh_g_triangle_instanced_ps;
-
-inline rhi_sh_shader rhi_sh_g_geometry_vs;
-inline rhi_sh_shader rhi_sh_g_geometry_ps;
+inline rhi_sh_shader rhi_sh_g_object_vs;
+inline rhi_sh_shader rhi_sh_g_object_ps;
 } // namespace ash
 
 namespace ash

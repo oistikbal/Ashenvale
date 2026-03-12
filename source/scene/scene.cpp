@@ -450,7 +450,7 @@ void ash::scene_render()
             ID3D12DescriptorHeap *heap[] = {rhi_g_cbv_srv_uav_heap.get(), rhi_g_sampler_heap.get()};
             command_list->SetDescriptorHeaps(2, heap);
 
-            command_list->SetGraphicsRootSignature(rhi_pl_g_geometry.root_signature.get());
+            command_list->SetGraphicsRootSignature(rhi_pl_g_object.root_signature.get());
 
             D3D12_RESOURCE_BARRIER barrier = {};
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -470,7 +470,7 @@ void ash::scene_render()
             command_list->ClearRenderTargetView(viewport_rtv_handle, clear_color, 0, nullptr);
             command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-            command_list->SetPipelineState(rhi_pl_g_geometry.pso.get());
+            command_list->SetPipelineState(rhi_pl_g_object.pso.get());
             command_list->RSSetViewports(1, &rhi_g_viewport);
             D3D12_RECT scissorRect = {0, 0, static_cast<UINT>(rhi_g_viewport.Width),
                                       static_cast<UINT>(rhi_g_viewport.Height)};

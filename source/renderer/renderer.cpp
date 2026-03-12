@@ -442,19 +442,6 @@ void ash::rhi_shutdown()
         rhi_sw_g_render_targets[i] = nullptr;
     }
 
-    rhi_pl_g_triangle.pso = nullptr;
-    rhi_pl_g_triangle.root_signature = nullptr;
-
-    rhi_sh_g_triangle_vs.blob = nullptr;
-    rhi_sh_g_triangle_vs.root_blob = nullptr;
-    rhi_sh_g_triangle_vs.input_layout.clear();
-    rhi_sh_g_triangle_vs.bindings.clear();
-
-    rhi_sh_g_triangle_ps.blob = nullptr;
-    rhi_sh_g_triangle_ps.root_blob = nullptr;
-    rhi_sh_g_triangle_ps.input_layout.clear();
-    rhi_sh_g_triangle_ps.bindings.clear();
-
     rhi_cmd_g_command_list = nullptr;
     rhi_cmd_g_command_allocator = nullptr;
     rhi_cmd_g_copy = nullptr;
