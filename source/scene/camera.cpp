@@ -20,7 +20,7 @@ void ash::cam_update_proj_mat(camera &cam, float fov_y, float screen_aspect, flo
     XMStoreFloat4x4(&cam.mat_proj, XMMatrixPerspectiveFovLH(fov_y, screen_aspect, screen_near, screen_far));
 }
 
-DirectX::XMMATRIX ash::cam_get_view_proj_mat(camera &cam)
+DirectX::XMMATRIX ash::cam_get_view_proj_mat(const camera &cam)
 {
     return (XMLoadFloat4x4(&cam.mat_view) * XMLoadFloat4x4(&cam.mat_proj));
 }

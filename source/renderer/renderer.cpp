@@ -7,6 +7,9 @@
 #include "pipeline/pipeline.h"
 #include "pipeline/shader.h"
 #include "pipeline/shader_compiler.h"
+#include "render_pass.h"
+#include "render_passes/editor_pass.h"
+#include "render_passes/object_pass.h"
 #include "renderer/core/command_queue.h"
 #include "renderer/core/swapchain.h"
 #include "scene/camera.h"
@@ -370,7 +373,7 @@ void ash::rhi_init()
 void ash::rhi_render()
 {
     auto last_time = std::chrono::high_resolution_clock::now();
-
+    frame_context frame_context = {};
     while (rhi_g_running.load(std::memory_order_relaxed))
     {
         SCOPED_CPU_EVENT(L"ash::rhi_render")
@@ -379,9 +382,31 @@ void ash::rhi_render()
         std::chrono::duration<float> delta_time = now - last_time;
         last_time = now;
 
-        handle_window_events();
+        frame_context = {};
 
+        handle_window_events();
         ed_render();
+
+        scene_update();
+        scene_data scene_data = get_scene_data(scene_g_world, g_camera);
+
+        rhi_sw_g_current_backbuffer = rhi_sw_g_swapchain->GetCurrentBackBufferIndex();
+        uint8_t &frame_index = rhi_sw_g_current_backbuffer;
+
+        const uint32_t rtv_descriptor_size =
+            rhi_g_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        D3D12_CPU_DESCRIPTOR_HANDLE swapchain_rtv_handle =
+            rhi_sw_g_swapchain_rtv_heap->GetCPUDescriptorHandleForHeapStart();
+        swapchain_rtv_handle.ptr += frame_index * rtv_descriptor_size;
+
+        frame_context.cmd = rhi_cmd_g_command_list.get();
+        frame_context.swapchain_backbuffer = rhi_sw_g_render_targets[frame_index].get();
+        frame_context.swapchain_rtv = swapchain_rtv_handle;
+
+        frame_context.viewport = rhi_g_viewport;
+        frame_context.viewport_rtv = rhi_g_viewport_rtv_heap->GetCPUDescriptorHandleForHeapStart();
+        frame_context.viewport_dsv_rtv = rhi_g_viewport_dsv_heap->GetCPUDescriptorHandleForHeapStart();
+        frame_context.viewport_texture = rhi_g_viewport_texture->GetResource();
 
         const auto &input_state = win_input_acquire_front_buffer(ash::g_win_input);
         if (ed_vp_g_is_focused)
@@ -390,8 +415,10 @@ void ash::rhi_render()
         }
         win_input_release_front_buffer(ash::g_win_input);
 
-        scene_render();
+        object_pass_render(frame_context, scene_data);
+        editor_pass_render(frame_context);
 
+        rhi_cmd_g_command_list->Close();
         ID3D12CommandList *cmdLists[] = {rhi_cmd_g_command_list.get()};
         rhi_cmd_g_direct->ExecuteCommandLists(1, cmdLists);
         HRESULT present_hr = rhi_sw_g_swapchain->Present(1, 0);

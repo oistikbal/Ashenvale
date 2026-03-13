@@ -1,10 +1,6 @@
 #include "scene.h"
 #include "editor/console.h"
 #include "editor/editor.h"
-#include "renderer/core/command_queue.h"
-#include "renderer/core/swapchain.h"
-#include "renderer/pipeline/pipeline.h"
-#include "renderer/renderer.h"
 #include "resource/resource_manager.h"
 #include "scene/camera.h"
 #include <common.h>
@@ -17,14 +13,13 @@
 #include <functional>
 #include <iostream>
 #include <numeric>
+#include <renderer/core/swapchain.h>
 #include <string>
 #include <vector>
 
 using namespace winrt;
 using namespace DirectX;
 
-namespace
-{
 struct vertex
 {
     DirectX::XMFLOAT3 position = {};
@@ -33,7 +28,8 @@ struct vertex
     DirectX::XMFLOAT2 uv = {};
 };
 
-inline com_ptr<D3D12MA::Allocation> g_scene_buffer;
+namespace
+{
 
 flecs::entity lookup_name_in_scope(const std::string &name, flecs::entity parent)
 {
@@ -389,161 +385,34 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
     return true;
 }
 
+ash::scene_data ash::get_scene_data(const flecs::world &world, const ash::camera &cam)
+{
+    ash::scene_data out{};
+    XMStoreFloat4x4(&out.view_proj, cam_get_view_proj_mat(cam));
+
+    out.objects.clear();
+    out.objects.reserve(static_cast<size_t>(world.count<ash::mesh_component>()));
+
+    world.each([&](flecs::entity e, const ash::transform &, const ash::mesh_component &m) {
+        ash::scene_object obj{};
+        obj.mesh_handle = m.handle;
+        XMStoreFloat4x4(&obj.model, get_world_transform_matrix(e));
+        out.objects.push_back(obj);
+    });
+
+    return out;
+}
+
 void ash::scene_init()
 {
-    D3D12_RESOURCE_DESC buf_desc = {};
-    buf_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    buf_desc.Alignment = 0;
-    buf_desc.Width = sizeof(XMFLOAT4X4) * 256;
-    buf_desc.Height = 1;
-    buf_desc.DepthOrArraySize = 1;
-    buf_desc.DepthOrArraySize = 1;
-    buf_desc.MipLevels = 1;
-    buf_desc.Format = DXGI_FORMAT_UNKNOWN;
-    buf_desc.SampleDesc.Count = 1;
-    buf_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    buf_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-    D3D12MA::ALLOCATION_DESC alloc_desc = {};
-    alloc_desc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-
-    rhi_g_allocator->CreateResource(&alloc_desc, &buf_desc, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nullptr,
-                                    g_scene_buffer.put(), IID_NULL, nullptr);
-
-    assert(g_scene_buffer.get());
-
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.Buffer.FirstElement = 0;
-    srvDesc.Buffer.NumElements = 256;
-    srvDesc.Buffer.StructureByteStride = sizeof(XMFLOAT4X4);
-    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle = rhi_g_cbv_srv_uav_heap->GetCPUDescriptorHandleForHeapStart();
-    UINT handle_size = rhi_g_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-    cpu_handle.ptr += 5 * handle_size;
-
-    rhi_g_device->CreateShaderResourceView(g_scene_buffer->GetResource(), &srvDesc, cpu_handle);
 }
 
 void ash::scene_shutdown()
 {
-    g_scene_buffer = nullptr;
 }
 
-void ash::scene_render()
+void ash::scene_update()
 {
-    {
-        cam_update_view_mat(g_camera);
-        cam_update_proj_mat(g_camera, XM_PI / 3, rhi_sw_g_viewport.Width / rhi_sw_g_viewport.Height, 0.1f, 1000.0f);
-
-        XMMATRIX view_proj = cam_get_view_proj_mat(g_camera);
-
-        auto &command_list = rhi_cmd_g_command_list;
-        {
-            SCOPED_GPU_EVENT(rhi_cmd_g_command_list.get(), L"ash::scene_render")
-
-            constexpr float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
-
-            ID3D12DescriptorHeap *heap[] = {rhi_g_cbv_srv_uav_heap.get(), rhi_g_sampler_heap.get()};
-            command_list->SetDescriptorHeaps(2, heap);
-
-            command_list->SetGraphicsRootSignature(rhi_pl_g_object.root_signature.get());
-
-            D3D12_RESOURCE_BARRIER barrier = {};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = rhi_g_viewport_texture->GetResource();
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-            command_list->ResourceBarrier(1, &barrier);
-
-            D3D12_CPU_DESCRIPTOR_HANDLE viewport_rtv_handle =
-                rhi_g_viewport_rtv_heap->GetCPUDescriptorHandleForHeapStart();
-            D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle = rhi_g_viewport_dsv_heap->GetCPUDescriptorHandleForHeapStart();
-
-            command_list->OMSetRenderTargets(1, &viewport_rtv_handle, FALSE, &dsv_handle);
-
-            command_list->ClearRenderTargetView(viewport_rtv_handle, clear_color, 0, nullptr);
-            command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-            command_list->SetPipelineState(rhi_pl_g_object.pso.get());
-            command_list->RSSetViewports(1, &rhi_g_viewport);
-            D3D12_RECT scissorRect = {0, 0, static_cast<UINT>(rhi_g_viewport.Width),
-                                      static_cast<UINT>(rhi_g_viewport.Height)};
-            command_list->RSSetScissorRects(1, &scissorRect);
-            command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-
-            scene_g_world.each([&](flecs::entity e, transform &t, mesh_component &m) {
-                XMFLOAT4X4 mvp;
-                XMStoreFloat4x4(&mvp, get_world_transform_matrix(e) * view_proj);
-                command_list->SetGraphicsRoot32BitConstants(0, 16, &mvp, 0);
-
-
-                D3D12_VERTEX_BUFFER_VIEW vbv = {};
-                vbv.BufferLocation =
-                    rm_get_buffer(rm_get_mesh(m.handle)->vertex_buffer)->resource->GetGPUVirtualAddress();
-                vbv.StrideInBytes = sizeof(vertex);
-                vbv.SizeInBytes = rm_get_buffer(rm_get_mesh(m.handle)->vertex_buffer)->size;
-
-                D3D12_INDEX_BUFFER_VIEW ibv = {};
-                ibv.BufferLocation =
-                    rm_get_buffer(rm_get_mesh(m.handle)->index_buffer)->resource->GetGPUVirtualAddress();
-                ibv.Format = DXGI_FORMAT_R32_UINT;
-                ibv.SizeInBytes = rm_get_buffer(rm_get_mesh(m.handle)->index_buffer)->size;
-
-                command_list->IASetVertexBuffers(0, 1, &vbv);
-                command_list->IASetIndexBuffer(&ibv);
-
-                command_list->DrawIndexedInstanced(rm_get_mesh(m.handle)->index_count, 1, 0, 0, 0);
-            });
-
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = rhi_g_viewport_texture->GetResource();
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-            command_list->ResourceBarrier(1, &barrier);
-
-            //// Swapchain
-
-            rhi_sw_g_current_backbuffer = rhi_sw_g_swapchain->GetCurrentBackBufferIndex();
-            uint8_t &frame_index = rhi_sw_g_current_backbuffer;
-
-            const uint32_t rtv_descriptor_size =
-                rhi_g_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-            D3D12_CPU_DESCRIPTOR_HANDLE swapchain_rtv_Handle =
-                rhi_sw_g_swapchain_rtv_heap->GetCPUDescriptorHandleForHeapStart();
-            swapchain_rtv_Handle.ptr += frame_index * rtv_descriptor_size;
-
-            barrier = {};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = rhi_sw_g_render_targets[frame_index].get();
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-            command_list->ResourceBarrier(1, &barrier);
-
-            command_list->OMSetRenderTargets(1, &swapchain_rtv_Handle, FALSE, nullptr);
-            command_list->ClearRenderTargetView(swapchain_rtv_Handle, clear_color, 0, nullptr);
-
-            ed_render_backend();
-
-            barrier = {};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = rhi_sw_g_render_targets[frame_index].get();
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-            command_list->ResourceBarrier(1, &barrier);
-        }
-        command_list->Close();
-    }
+    cam_update_view_mat(g_camera);
+    cam_update_proj_mat(g_camera, XM_PI / 3, rhi_sw_g_viewport.Width / rhi_sw_g_viewport.Height, 0.1f, 1000.0f);
 }

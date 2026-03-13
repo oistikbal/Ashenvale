@@ -19,6 +19,6 @@ namespace ash
 {
 void cam_update_view_mat(camera &cam);
 void cam_update_proj_mat(camera &cam, float fov_y, float screen_aspect, float screen_near, float screen_far);
-DirectX::XMMATRIX cam_get_view_proj_mat(camera &cam);
+DirectX::XMMATRIX cam_get_view_proj_mat(const camera &cam);
 void cam_handle_input(camera &cam, float delta_time, const win_input::input_state &input_state);
 } // namespace ash

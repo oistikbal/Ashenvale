@@ -275,9 +275,3 @@ void ash::ed_shutdown()
         ImGui::DestroyContext();
     }
 }
-
-void ash::ed_render_backend()
-{
-    SCOPED_CPU_EVENT(L"ash::ed_render_backend")
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), rhi_cmd_g_command_list.get());
-}
