@@ -1,5 +1,5 @@
 #define RS "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | SAMPLER_HEAP_DIRECTLY_INDEXED | CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED ), " \
-            "RootConstants(num32BitConstants=16, b0)"
+            "RootConstants(num32BitConstants=17, b0)"
 
 struct VSInput
 {
@@ -20,6 +20,7 @@ struct VSOutput
 struct SceneBuffer
 {
     float4x4 mvp;
+    uint albedo;
 };
 
 ConstantBuffer<SceneBuffer> sb : register(b0);
@@ -35,7 +36,8 @@ VSOutput vs_main(VSInput input)
 
 float4 ps_main(VSOutput input) : SV_Target
 {
-    Texture2D<float4> tex = ResourceDescriptorHeap[0];
+    Texture2D<float4> tex = ResourceDescriptorHeap[sb.albedo];
     SamplerState samp = SamplerDescriptorHeap[0];
+    
     return tex.Sample(samp, input.uv);
 }

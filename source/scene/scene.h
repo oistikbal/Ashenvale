@@ -12,6 +12,7 @@ namespace ash
 struct scene_object
 {
     uint32_t mesh_handle;
+    material mat;
     DirectX::XMFLOAT4X4 model;
 };
 

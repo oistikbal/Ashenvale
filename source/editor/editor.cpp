@@ -56,8 +56,8 @@ std::optional<std::filesystem::path> choose_gltf_scene_file()
 
 void ash::ed_init()
 {
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu = rhi_g_cbv_srv_uav_heap->GetCPUDescriptorHandleForHeapStart();
-    D3D12_GPU_DESCRIPTOR_HANDLE gpu = rhi_g_cbv_srv_uav_heap->GetGPUDescriptorHandleForHeapStart();
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu = rhi_get_cbv_srv_uav_cpu_descriptor(rhi_cbv_srv_uav_imgui_descriptor_index);
+    D3D12_GPU_DESCRIPTOR_HANDLE gpu = rhi_get_cbv_srv_uav_gpu_descriptor(rhi_cbv_srv_uav_imgui_descriptor_index);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();

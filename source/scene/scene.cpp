@@ -4,6 +4,8 @@
 #include "resource/resource_manager.h"
 #include "scene/camera.h"
 #include <common.h>
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <fastgltf/core.hpp>
 #include <fastgltf/math.hpp>
@@ -15,7 +17,11 @@
 #include <numeric>
 #include <renderer/core/swapchain.h>
 #include <string>
+#include <variant>
 #include <vector>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 using namespace winrt;
 using namespace DirectX;
@@ -30,6 +36,208 @@ struct vertex
 
 namespace
 {
+
+struct decoded_image_rgba8
+{
+    int width = 0;
+    int height = 0;
+    std::vector<std::uint8_t> pixels;
+};
+
+std::uint16_t get_mip_level_count(std::uint32_t width, std::uint32_t height)
+{
+    std::uint16_t mip_count = 1;
+    while (width > 1 || height > 1)
+    {
+        width = std::max(1u, width / 2);
+        height = std::max(1u, height / 2);
+        ++mip_count;
+    }
+    return mip_count;
+}
+
+std::vector<std::uint8_t> build_mip_chain_rgba8(const decoded_image_rgba8 &image, std::uint16_t &out_mip_levels)
+{
+    out_mip_levels = 1;
+    if (image.width <= 0 || image.height <= 0 || image.pixels.empty())
+    {
+        return {};
+    }
+
+    std::uint32_t width = static_cast<std::uint32_t>(image.width);
+    std::uint32_t height = static_cast<std::uint32_t>(image.height);
+    out_mip_levels = get_mip_level_count(width, height);
+
+    std::size_t total_size = 0;
+    std::uint32_t level_width = width;
+    std::uint32_t level_height = height;
+    for (std::uint16_t level = 0; level < out_mip_levels; ++level)
+    {
+        total_size += static_cast<std::size_t>(level_width) * level_height * 4;
+        level_width = std::max(1u, level_width / 2);
+        level_height = std::max(1u, level_height / 2);
+    }
+
+    std::vector<std::uint8_t> packed;
+    packed.reserve(total_size);
+
+    std::vector<std::uint8_t> current = image.pixels;
+    level_width = width;
+    level_height = height;
+
+    for (std::uint16_t level = 0; level < out_mip_levels; ++level)
+    {
+        packed.insert(packed.end(), current.begin(), current.end());
+        if (level + 1 >= out_mip_levels)
+        {
+            break;
+        }
+
+        const std::uint32_t next_width = std::max(1u, level_width / 2);
+        const std::uint32_t next_height = std::max(1u, level_height / 2);
+        std::vector<std::uint8_t> next(static_cast<std::size_t>(next_width) * next_height * 4);
+
+        for (std::uint32_t y = 0; y < next_height; ++y)
+        {
+            for (std::uint32_t x = 0; x < next_width; ++x)
+            {
+                const std::uint32_t x0 = std::min(level_width - 1, x * 2);
+                const std::uint32_t x1 = std::min(level_width - 1, x * 2 + 1);
+                const std::uint32_t y0 = std::min(level_height - 1, y * 2);
+                const std::uint32_t y1 = std::min(level_height - 1, y * 2 + 1);
+
+                for (std::uint32_t c = 0; c < 4; ++c)
+                {
+                    const std::uint32_t p00 = current[(static_cast<std::size_t>(y0) * level_width + x0) * 4 + c];
+                    const std::uint32_t p10 = current[(static_cast<std::size_t>(y0) * level_width + x1) * 4 + c];
+                    const std::uint32_t p01 = current[(static_cast<std::size_t>(y1) * level_width + x0) * 4 + c];
+                    const std::uint32_t p11 = current[(static_cast<std::size_t>(y1) * level_width + x1) * 4 + c];
+                    next[(static_cast<std::size_t>(y) * next_width + x) * 4 + c] =
+                        static_cast<std::uint8_t>((p00 + p10 + p01 + p11) / 4);
+                }
+            }
+        }
+
+        current = std::move(next);
+        level_width = next_width;
+        level_height = next_height;
+    }
+
+    return packed;
+}
+
+template <class... Ts> struct overloaded : Ts...
+{
+    using Ts::operator()...;
+};
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+bool decode_image_rgba8_from_memory(const std::byte *data, std::size_t size, decoded_image_rgba8 &out_image)
+{
+    if (!data || size == 0)
+        return false;
+
+    int width = 0, height = 0, channels = 0;
+    stbi_uc *decoded = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(data), static_cast<int>(size), &width,
+                                             &height, &channels, STBI_rgb_alpha);
+    if (!decoded)
+        return false;
+
+    out_image.width = width;
+    out_image.height = height;
+    out_image.pixels.assign(decoded, decoded + (width * height * 4));
+    stbi_image_free(decoded);
+    return true;
+}
+
+bool decode_image_rgba8_from_file(const std::filesystem::path &file_path, decoded_image_rgba8 &out_image)
+{
+    int width = 0, height = 0, channels = 0;
+    stbi_uc *decoded = stbi_load(file_path.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    if (!decoded)
+        return false;
+
+    out_image.width = width;
+    out_image.height = height;
+    out_image.pixels.assign(decoded, decoded + (width * height * 4));
+    stbi_image_free(decoded);
+    return true;
+}
+
+bool load_gltf_image_rgba8(const fastgltf::Asset &asset, std::size_t image_index, const std::filesystem::path &gltf_dir,
+                           decoded_image_rgba8 &out_image)
+{
+    if (image_index >= asset.images.size())
+        return false;
+
+    const fastgltf::Image &image = asset.images[image_index];
+
+    return std::visit(
+        overloaded{[&](const fastgltf::sources::URI &uri_source) -> bool {
+                       if (!uri_source.uri.isLocalPath())
+                           return false;
+
+                       std::filesystem::path img_path = uri_source.uri.fspath();
+                       if (img_path.is_relative())
+                           img_path = gltf_dir / img_path;
+
+                       return decode_image_rgba8_from_file(img_path, out_image);
+                   },
+                   [&](const fastgltf::sources::Array &array_source) -> bool {
+                       return decode_image_rgba8_from_memory(array_source.bytes.data(), array_source.bytes.size(),
+                                                             out_image);
+                   },
+                   [&](const fastgltf::sources::Vector &vector_source) -> bool {
+                       return decode_image_rgba8_from_memory(vector_source.bytes.data(), vector_source.bytes.size(),
+                                                             out_image);
+                   },
+                   [&](const fastgltf::sources::ByteView &byte_view_source) -> bool {
+                       return decode_image_rgba8_from_memory(byte_view_source.bytes.data(),
+                                                             byte_view_source.bytes.size(), out_image);
+                   },
+                   [&](const fastgltf::sources::BufferView &buffer_view_source) -> bool {
+                       if (buffer_view_source.bufferViewIndex >= asset.bufferViews.size())
+                           return false;
+
+                       const fastgltf::BufferView &view = asset.bufferViews[buffer_view_source.bufferViewIndex];
+                       if (view.bufferIndex >= asset.buffers.size())
+                           return false;
+
+                       const fastgltf::Buffer &buffer = asset.buffers[view.bufferIndex];
+
+                       const std::byte *base = nullptr;
+                       std::size_t base_size = 0;
+
+                       const bool got_buffer =
+                           std::visit(overloaded{[&](const fastgltf::sources::Array &src) -> bool {
+                                                     base = src.bytes.data();
+                                                     base_size = src.bytes.size();
+                                                     return true;
+                                                 },
+                                                 [&](const fastgltf::sources::Vector &src) -> bool {
+                                                     base = src.bytes.data();
+                                                     base_size = src.bytes.size();
+                                                     return true;
+                                                 },
+                                                 [&](const fastgltf::sources::ByteView &src) -> bool {
+                                                     base = src.bytes.data();
+                                                     base_size = src.bytes.size();
+                                                     return true;
+                                                 },
+                                                 [&](auto &) -> bool { return false; }},
+                                      buffer.data);
+
+                       if (!got_buffer)
+                           return false;
+
+                       if (view.byteOffset + view.byteLength > base_size)
+                           return false;
+
+                       return decode_image_rgba8_from_memory(base + view.byteOffset, view.byteLength, out_image);
+                   },
+                   [&](auto &) -> bool { return false; }},
+        image.data);
+}
 
 flecs::entity lookup_name_in_scope(const std::string &name, flecs::entity parent)
 {
@@ -179,6 +387,95 @@ bool import_gltf_primitive_resource(const fastgltf::Asset &asset, const fastgltf
         ash::rm_create_mesh(vertex_buffer.handle, index_buffer.handle, static_cast<uint32_t>(indices.size()));
 
     out_mesh.handle = mesh_resource.handle;
+
+    return true;
+}
+
+bool import_gltf_primitive_material(const fastgltf::Asset &asset, const fastgltf::Primitive &primitive,
+                                    ash::material &out_material, const std::filesystem::path &path)
+{
+    out_material = {};
+
+    auto create_texture_resource = [](const decoded_image_rgba8 &image, uint32_t &out_handle) -> bool {
+        if (image.width <= 0 || image.height <= 0 || image.pixels.empty())
+        {
+            return false;
+        }
+
+        std::uint16_t mip_levels = 1;
+        std::vector<std::uint8_t> mip_chain = build_mip_chain_rgba8(image, mip_levels);
+        if (mip_chain.empty())
+        {
+            return false;
+        }
+
+        D3D12_RESOURCE_DESC texture_desc = {};
+        texture_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        texture_desc.Alignment = 0;
+        texture_desc.Width = static_cast<UINT64>(image.width);
+        texture_desc.Height = static_cast<UINT>(image.height);
+        texture_desc.DepthOrArraySize = 1;
+        texture_desc.MipLevels = mip_levels;
+        texture_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texture_desc.SampleDesc.Count = 1;
+        texture_desc.SampleDesc.Quality = 0;
+        texture_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        texture_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+        D3D12MA::ALLOCATION_DESC allocation_desc = {};
+        allocation_desc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+        const ash::resource texture =
+            ash::rm_create_texture(texture_desc, allocation_desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                                   mip_chain.data(), static_cast<uint64_t>(mip_chain.size()));
+        if (texture.handle == ash::invalid_resource_handle)
+        {
+            return false;
+        }
+
+        const ash::resource_texture *texture_data = ash::rm_get_texture(texture.handle);
+        if (!texture_data)
+        {
+            return false;
+        }
+
+        out_handle = texture_data->srv_descriptor_index;
+        return true;
+    };
+
+    if (!primitive.materialIndex || *primitive.materialIndex >= asset.materials.size())
+    {
+        return true;
+    }
+
+    decoded_image_rgba8 base_color = {};
+    decoded_image_rgba8 normal = {};
+    const auto &mat = asset.materials[*primitive.materialIndex];
+
+    if (mat.pbrData.baseColorTexture && mat.pbrData.baseColorTexture->textureIndex < asset.textures.size())
+    {
+        const auto &tex = asset.textures[mat.pbrData.baseColorTexture->textureIndex];
+        if (tex.imageIndex)
+        {
+            if (load_gltf_image_rgba8(asset, *tex.imageIndex, path.parent_path(), base_color))
+            {
+                create_texture_resource(base_color, out_material.albedo);
+            }
+        }
+    }
+
+    if (mat.normalTexture && mat.normalTexture->textureIndex < asset.textures.size())
+    {
+        const auto &tex = asset.textures[mat.normalTexture->textureIndex];
+        if (tex.imageIndex)
+        {
+            if (load_gltf_image_rgba8(asset, *tex.imageIndex, path.parent_path(), normal))
+            {
+                create_texture_resource(normal, out_material.normal);
+            }
+        }
+    }
+
     return true;
 }
 } // namespace
@@ -245,10 +542,13 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
 
     fastgltf::Parser parser(fastgltf::Extensions::KHR_mesh_quantization | fastgltf::Extensions::KHR_lights_punctual);
     constexpr auto options = fastgltf::Options::DontRequireValidAssetMember | fastgltf::Options::DecomposeNodeMatrices |
-                             fastgltf::Options::LoadExternalBuffers;
+                             fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages;
+
     constexpr auto categories = fastgltf::Category::Asset | fastgltf::Category::Scenes | fastgltf::Category::Nodes |
                                 fastgltf::Category::Meshes | fastgltf::Category::Buffers |
-                                fastgltf::Category::BufferViews | fastgltf::Category::Accessors;
+                                fastgltf::Category::BufferViews | fastgltf::Category::Accessors |
+                                fastgltf::Category::Materials | fastgltf::Category::Textures |
+                                fastgltf::Category::Images | fastgltf::Category::Samplers;
 
     auto gltf_file = fastgltf::MappedGltfFile::FromPath(path);
     if (!bool(gltf_file))
@@ -347,6 +647,12 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
                         continue;
                     }
 
+                    ash::material material = {};
+                    if (!import_gltf_primitive_material(asset, mesh.primitives[primitive_index], material, path))
+                    {
+                        continue;
+                    }
+
                     flecs::entity primitive_entity =
                         scene_g_world.entity().add<ash::game_object>().set<ash::transform>({});
                     primitive_entity.child_of(entity);
@@ -354,6 +660,7 @@ bool ash::scene_load_gltf(const std::filesystem::path &path)
                     std::string primitive_name = node_name + " Primitive " + std::to_string(primitive_index);
                     scene_set_entity_name_safe(primitive_entity, primitive_name);
                     primitive_entity.set<ash::mesh_component>(mesh_component);
+                    primitive_entity.set<ash::material>(material);
                     ++imported_primitive_count;
                 }
 
@@ -393,9 +700,10 @@ ash::scene_data ash::get_scene_data(const flecs::world &world, const ash::camera
     out.objects.clear();
     out.objects.reserve(static_cast<size_t>(world.count<ash::mesh_component>()));
 
-    world.each([&](flecs::entity e, const ash::transform &, const ash::mesh_component &m) {
+    world.each([&](flecs::entity e, const ash::transform &, const ash::mesh_component &m, const ash::material& mat) {
         ash::scene_object obj{};
         obj.mesh_handle = m.handle;
+        obj.mat = mat;
         XMStoreFloat4x4(&obj.model, get_world_transform_matrix(e));
         out.objects.push_back(obj);
     });

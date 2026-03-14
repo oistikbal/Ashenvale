@@ -30,6 +30,7 @@ target_include_directories(Ashenvale PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(Ashenvale PRIVATE "${CMAKE_BINARY_DIR}/generated")
 target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/WinPixEventRuntime/Include")
 target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/dxcompiler/inc/")
+target_include_directories(Ashenvale PRIVATE "${CMAKE_SOURCE_DIR}/thirdparty/stb")
 
 
 set_target_properties(Ashenvale PROPERTIES CXX_STANDARD 20)

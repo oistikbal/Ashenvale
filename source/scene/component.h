@@ -22,6 +22,12 @@ struct mesh_component
     uint32_t handle = {};
 };
 
+struct material
+{
+    uint32_t albedo = {};
+    uint32_t normal = {};
+};
+
 inline DirectX::XMMATRIX get_local_transform_matrix(const ash::transform &transform)
 {
     const DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, transform.scale.z);

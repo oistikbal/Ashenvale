@@ -52,10 +52,18 @@ void ash::object_pass_render(const frame_context &frame_context, const scene_dat
 
     for (const scene_object& so : scene_data.objects)
     {
-        XMFLOAT4X4 mvp;
-        XMStoreFloat4x4(&mvp, XMLoadFloat4x4(&so.model) * XMLoadFloat4x4(&scene_data.view_proj));
+        struct scene_constant
+        {
+            XMFLOAT4X4 mvp;
+            uint32_t albedo_index;
+        };
 
-        frame_context.cmd->SetGraphicsRoot32BitConstants(0, 16, &mvp, 0);
+        scene_constant sc;
+        XMStoreFloat4x4(&sc.mvp, XMLoadFloat4x4(&so.model) * XMLoadFloat4x4(&scene_data.view_proj));
+
+        sc.albedo_index = so.mat.albedo;
+
+        frame_context.cmd->SetGraphicsRoot32BitConstants(0, 17, &sc, 0);
 
         D3D12_VERTEX_BUFFER_VIEW vbv = {};
         vbv.BufferLocation =

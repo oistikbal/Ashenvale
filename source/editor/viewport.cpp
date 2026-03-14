@@ -42,11 +42,8 @@ void ash::ed_vp_render()
             ash::rhi_resize(new_viewport);
         }
 
-        auto handle_size =
-            ash::rhi_g_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-        D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle = ash::rhi_g_cbv_srv_uav_heap->GetGPUDescriptorHandleForHeapStart();
-        gpu_handle.ptr += 1 * handle_size;
+        D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle =
+            ash::rhi_get_cbv_srv_uav_gpu_descriptor(ash::rhi_cbv_srv_uav_viewport_descriptor_index);
 
         ImGui::Image((ImTextureID)(intptr_t)gpu_handle.ptr, ImVec2(newWidth, newHeight));
     }

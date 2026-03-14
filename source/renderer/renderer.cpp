@@ -352,6 +352,8 @@ void ash::rhi_init()
 
     assert(rhi_g_cbv_srv_uav_heap.get());
     SET_OBJECT_NAME(rhi_g_cbv_srv_uav_heap.get(), L"CBV SRV UAV Desc Heap");
+    rhi_g_cbv_srv_uav_descriptor_capacity = cbv_srv_uav_heap_desc.NumDescriptors;
+    rhi_g_next_cbv_srv_uav_descriptor.store(rhi_cbv_srv_uav_first_dynamic_descriptor_index, std::memory_order_relaxed);
 
     D3D12_DESCRIPTOR_HEAP_DESC sampler_heap_desc = {};
     sampler_heap_desc.NumDescriptors = 2048;
@@ -361,6 +363,23 @@ void ash::rhi_init()
 
     assert(rhi_g_sampler_heap.get());
     SET_OBJECT_NAME(rhi_g_sampler_heap.get(), L"Sampler Desc Heap");
+
+    D3D12_SAMPLER_DESC default_sampler_desc = {};
+    default_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    default_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    default_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    default_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    default_sampler_desc.MipLODBias = 0.0f;
+    default_sampler_desc.MaxAnisotropy = 1;
+    default_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
+    default_sampler_desc.BorderColor[0] = 0.0f;
+    default_sampler_desc.BorderColor[1] = 0.0f;
+    default_sampler_desc.BorderColor[2] = 0.0f;
+    default_sampler_desc.BorderColor[3] = 0.0f;
+    default_sampler_desc.MinLOD = 0.0f;
+    default_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
+    rhi_g_device->CreateSampler(&default_sampler_desc, rhi_g_sampler_heap->GetCPUDescriptorHandleForHeapStart());
+
     ed_console_log(ed_console_log_level::info, "[RHI] Descriptor heaps created.");
 
     rhi_resize(rhi_g_viewport);
@@ -476,6 +495,8 @@ void ash::rhi_shutdown()
     rhi_cmd_g_direct = nullptr;
 
     rhi_g_cbv_srv_uav_heap = nullptr;
+    rhi_g_cbv_srv_uav_descriptor_capacity = 0;
+    rhi_g_next_cbv_srv_uav_descriptor.store(rhi_cbv_srv_uav_first_dynamic_descriptor_index, std::memory_order_relaxed);
     rhi_g_sampler_heap = nullptr;
     rhi_g_viewport_rtv_heap = nullptr;
     rhi_g_viewport_dsv_heap = nullptr;
@@ -585,9 +606,43 @@ void ash::rhi_resize(D3D12_VIEWPORT viewport)
     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srv_desc.Texture2D.MipLevels = 1;
 
-    auto handle_size = rhi_g_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle = rhi_g_cbv_srv_uav_heap->GetCPUDescriptorHandleForHeapStart();
-    cpu_handle.ptr += handle_size;
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle =
+        rhi_get_cbv_srv_uav_cpu_descriptor(rhi_cbv_srv_uav_viewport_descriptor_index);
 
     rhi_g_device->CreateShaderResourceView(rhi_g_viewport_texture->GetResource(), &srv_desc, cpu_handle);
+}
+
+uint32_t ash::rhi_alloc_cbv_srv_uav_descriptor()
+{
+    uint32_t current = rhi_g_next_cbv_srv_uav_descriptor.load(std::memory_order_relaxed);
+    while (true)
+    {
+        if (current >= rhi_g_cbv_srv_uav_descriptor_capacity)
+        {
+            ed_console_log(ed_console_log_level::error, "[RHI] Descriptor heap exhausted.");
+            return rhi_invalid_descriptor_index;
+        }
+
+        const uint32_t next = current + 1;
+        if (rhi_g_next_cbv_srv_uav_descriptor.compare_exchange_weak(current, next, std::memory_order_relaxed))
+        {
+            return current;
+        }
+    }
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE ash::rhi_get_cbv_srv_uav_cpu_descriptor(uint32_t descriptor_index)
+{
+    D3D12_CPU_DESCRIPTOR_HANDLE handle = rhi_g_cbv_srv_uav_heap->GetCPUDescriptorHandleForHeapStart();
+    const uint32_t descriptor_size = rhi_g_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    handle.ptr += static_cast<SIZE_T>(descriptor_size) * descriptor_index;
+    return handle;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE ash::rhi_get_cbv_srv_uav_gpu_descriptor(uint32_t descriptor_index)
+{
+    D3D12_GPU_DESCRIPTOR_HANDLE handle = rhi_g_cbv_srv_uav_heap->GetGPUDescriptorHandleForHeapStart();
+    const uint32_t descriptor_size = rhi_g_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    handle.ptr += static_cast<UINT64>(descriptor_size) * descriptor_index;
+    return handle;
 }

@@ -2,6 +2,7 @@
 
 #include "uuid.h"
 #include <D3D12MemAlloc.h>
+#include <cstdint>
 #include <variant>
 #include <winrt/base.h>
 
@@ -43,6 +44,7 @@ struct resource_texture
     uint32_t width = 0;
     uint32_t height = 0;
     DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+    uint32_t srv_descriptor_index = UINT32_MAX;
 };
 
 struct resource_mesh

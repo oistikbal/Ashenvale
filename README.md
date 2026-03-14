@@ -3,7 +3,7 @@
 Ashenvale is a bindless, multi-threaded, glTF based DirectX 12 renderer serving as a sandbox for implementing advanced graphics techniques.
 
 ## Screenshots
-![](.github/screenshot/3.jpg)
+![](.github/screenshot/5.jpg)
 
 ## Features
 
