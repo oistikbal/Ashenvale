@@ -474,6 +474,11 @@ void ash::ed_inspector_render()
 
     ImGui::Begin(ICON_MS_INFO " Inspector ###Inspector", &ed_inspector_g_is_open);
 
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+    {
+        scene_g_selected = flecs::entity::null();
+    }
+
     if (!scene_g_selected.is_valid())
     {
         ImGui::TextDisabled("No entity selected.");

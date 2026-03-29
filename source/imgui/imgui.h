@@ -36,6 +36,7 @@
 #define IMGUI_HAS_VIEWPORT          // In 'docking' WIP branch.
 #define IMGUI_HAS_DOCK              // In 'docking' WIP branch.
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 /*
 
 Index of this file:
