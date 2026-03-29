@@ -365,12 +365,12 @@ void ash::rhi_init()
     SET_OBJECT_NAME(rhi_g_sampler_heap.get(), L"Sampler Desc Heap");
 
     D3D12_SAMPLER_DESC default_sampler_desc = {};
-    default_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    default_sampler_desc.Filter = D3D12_FILTER_ANISOTROPIC;
     default_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
     default_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
     default_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
     default_sampler_desc.MipLODBias = 0.0f;
-    default_sampler_desc.MaxAnisotropy = 1;
+    default_sampler_desc.MaxAnisotropy = 16;
     default_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
     default_sampler_desc.BorderColor[0] = 0.0f;
     default_sampler_desc.BorderColor[1] = 0.0f;
@@ -515,8 +515,10 @@ void ash::rhi_shutdown()
     rhi_sc_g_compiler = nullptr;
     rhi_sc_g_utils = nullptr;
 
+#if _DEBUG
     g_d3d12_info_queue = nullptr;
     g_dxgi_info_queue = nullptr;
+#endif
 
     rhi_g_allocator = nullptr;
     rhi_g_output = nullptr;

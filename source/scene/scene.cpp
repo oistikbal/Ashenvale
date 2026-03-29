@@ -433,13 +433,7 @@ bool import_gltf_primitive_material(const fastgltf::Asset &asset, const fastgltf
             return false;
         }
 
-        const ash::resource_texture *texture_data = ash::rm_get_texture(texture.handle);
-        if (!texture_data)
-        {
-            return false;
-        }
-
-        out_handle = texture_data->srv_descriptor_index;
+        out_handle = texture.handle;
         return true;
     };
 

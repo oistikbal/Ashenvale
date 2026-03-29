@@ -317,6 +317,10 @@ resource_texture *rm_get_texture(resource_handle handle)
 {
     return pool_get(g_textures, handle);
 }
+uint32_t rm_get_texture_count()
+{
+    return static_cast<uint32_t>(g_textures.size());
+}
 resource_buffer *rm_get_buffer(resource_handle handle)
 {
     return pool_get(g_buffers, handle);

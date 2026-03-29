@@ -69,5 +69,6 @@ resource rm_create_mesh(resource_handle vertex_buffer, resource_handle index_buf
 
 resource_mesh *rm_get_mesh(resource_handle handle);
 resource_texture *rm_get_texture(resource_handle handle);
+uint32_t rm_get_texture_count();
 resource_buffer *rm_get_buffer(resource_handle handle);
 } // namespace ash

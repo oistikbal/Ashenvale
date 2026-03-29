@@ -60,8 +60,11 @@ void ash::object_pass_render(const frame_context &frame_context, const scene_dat
 
         scene_constant sc;
         XMStoreFloat4x4(&sc.mvp, XMLoadFloat4x4(&so.model) * XMLoadFloat4x4(&scene_data.view_proj));
-
         sc.albedo_index = so.mat.albedo;
+        if (const ash::resource_texture *albedo_texture = ash::rm_get_texture(so.mat.albedo))
+        {
+            sc.albedo_index = albedo_texture->srv_descriptor_index;
+        }
 
         frame_context.cmd->SetGraphicsRoot32BitConstants(0, 17, &sc, 0);
 

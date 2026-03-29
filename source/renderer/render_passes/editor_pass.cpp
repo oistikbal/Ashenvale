@@ -5,6 +5,8 @@
 
 void ash::editor_pass_render(const frame_context &frame_context)
 {
+    SCOPED_GPU_EVENT(frame_context.cmd, L"ash::editor_pass_render")
+
     constexpr float clear_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
     D3D12_RESOURCE_BARRIER barrier = {};

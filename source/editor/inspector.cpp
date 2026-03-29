@@ -2,8 +2,13 @@
 #include "IconsMaterialSymbols.h"
 #include "common.h"
 #include "console.h"
+#include "resource/resource_manager.h"
+#include "renderer/renderer.h"
 #include "scene/component.h"
 #include "scene/scene.h"
+#include <algorithm>
+#include <cctype>
+#include <cstdint>
 #include <cstring>
 #include <imgui/imgui.h>
 #include <cmath>
@@ -43,6 +48,19 @@ DirectX::XMFLOAT3 quaternion_to_euler_radians(const DirectX::XMFLOAT4 &q)
     const float roll = std::atan2(siny_cosp, cosy_cosp);
 
     return {pitch, yaw, roll};
+}
+
+bool contains_case_insensitive(const std::string &text, const std::string &query)
+{
+    if (query.empty())
+    {
+        return true;
+    }
+
+    auto it = std::search(text.begin(), text.end(), query.begin(), query.end(), [](char lhs, char rhs) {
+        return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+    });
+    return it != text.end();
 }
 
 bool draw_axis_float(const char *axis_label, const ImVec4 &color, float &value, float speed, bool *is_active = nullptr)
@@ -191,6 +209,256 @@ void draw_transform_component(flecs::entity entity)
         entity.set<ash::transform>(transform_value);
     }
 }
+
+void draw_mesh_component(flecs::entity entity)
+{
+    if (!entity.has<ash::mesh_component>())
+    {
+        return;
+    }
+
+    ash::mesh_component mesh_value = entity.get<ash::mesh_component>();
+    bool changed = false;
+
+    ImGuiTreeNodeFlags header_flags = ImGuiTreeNodeFlags_DefaultOpen;
+    if (ImGui::CollapsingHeader(ICON_MS_GRID_VIEW " Mesh", header_flags))
+    {
+        ImGuiTableFlags table_flags = ImGuiTableFlags_SizingFixedFit;
+        if (ImGui::BeginTable("MeshTable", 2, table_flags))
+        {
+            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(ICON_MS_DATA_OBJECT " Handle");
+
+            ImGui::TableSetColumnIndex(1);
+            changed |= ImGui::InputScalar("##MeshHandle", ImGuiDataType_U32, &mesh_value.handle);
+
+            ImGui::EndTable();
+        }
+    }
+
+    if (changed)
+    {
+        entity.set<ash::mesh_component>(mesh_value);
+    }
+}
+
+bool draw_texture_selector_popup(const char *popup_id, uint32_t &texture_handle)
+{
+    bool changed = false;
+    static float thumbnail_size = 72.0f;
+    static char search_buffer[64] = {};
+
+    ImGui::SetNextWindowSizeConstraints(ImVec2(420.0f, 280.0f), ImVec2(1200.0f, 900.0f));
+    ImGui::SetNextWindowSize(ImVec2(760.0f, 520.0f), ImGuiCond_Appearing);
+
+    if (ImGui::BeginPopup(popup_id))
+    {
+        ImGui::TextUnformatted(ICON_MS_TEXTURE " Select Texture");
+        ImGui::SameLine();
+        ImGui::TextDisabled("(Current: #%u)", texture_handle);
+        ImGui::Separator();
+
+        if (ImGui::Button(ICON_MS_BROKEN_IMAGE " Clear Selection"))
+        {
+            texture_handle = 0;
+            changed = true;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(170.0f);
+        ImGui::SliderFloat("Thumbnail", &thumbnail_size, 48.0f, 160.0f, "%.0f px");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##TextureSearch", "Search by handle or size", search_buffer, sizeof(search_buffer));
+
+        const uint32_t texture_count = ash::rm_get_texture_count();
+        if (texture_count == 0)
+        {
+            ImGui::TextDisabled("No textures loaded.");
+            ImGui::EndPopup();
+            return changed;
+        }
+
+        ImGui::Separator();
+        if (ImGui::BeginChild("TextureSelectorGrid", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+        {
+            const ImGuiStyle &style = ImGui::GetStyle();
+            const float cell_width = thumbnail_size + style.ItemSpacing.x + 28.0f;
+            int column_count = static_cast<int>(ImGui::GetContentRegionAvail().x / cell_width);
+            column_count = (column_count < 1) ? 1 : column_count;
+
+            uint32_t visible_count = 0;
+            if (ImGui::BeginTable("TextureSelectorTable", column_count, ImGuiTableFlags_SizingStretchSame))
+            {
+                for (uint32_t handle = 1; handle <= texture_count; ++handle)
+                {
+                    const ash::resource_texture *texture = ash::rm_get_texture(handle);
+                    if (texture == nullptr)
+                    {
+                        continue;
+                    }
+
+                    const std::string handle_text = std::to_string(handle);
+                    const std::string size_text = std::to_string(texture->width) + "x" + std::to_string(texture->height);
+                    const std::string search_text = handle_text + " " + size_text;
+                    if (!contains_case_insensitive(search_text, search_buffer))
+                    {
+                        continue;
+                    }
+
+                    ++visible_count;
+                    ImGui::TableNextColumn();
+                    ImGui::PushID(static_cast<int>(handle));
+
+                    const bool is_current = (handle == texture_handle);
+                    if (is_current)
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.20f, 0.65f, 1.00f, 1.0f));
+                        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+                    }
+
+                    bool selected = false;
+                    if (texture->srv_descriptor_index != ash::rhi_invalid_descriptor_index)
+                    {
+                        const D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle =
+                            ash::rhi_get_cbv_srv_uav_gpu_descriptor(texture->srv_descriptor_index);
+                        selected = ImGui::ImageButton("##TextureButton", (ImTextureID)(intptr_t)gpu_handle.ptr,
+                                                      ImVec2(thumbnail_size, thumbnail_size));
+                    }
+                    else
+                    {
+                        selected = ImGui::Button(ICON_MS_BROKEN_IMAGE "##TextureButton",
+                                                 ImVec2(thumbnail_size, thumbnail_size));
+                    }
+
+                    if (is_current)
+                    {
+                        ImGui::PopStyleVar();
+                        ImGui::PopStyleColor();
+                    }
+
+                    if (selected)
+                    {
+                        texture_handle = handle;
+                        changed = true;
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    if (ImGui::IsItemHovered())
+                    {
+                        ImGui::SetTooltip("Handle: %u\nSize: %ux%u", handle, texture->width, texture->height);
+                    }
+
+                    if (is_current)
+                    {
+                        ImGui::Text("%s #%u", ICON_MS_CHECK, handle);
+                    }
+                    else
+                    {
+                        ImGui::TextDisabled("#%u", handle);
+                    }
+                    ImGui::TextDisabled("%ux%u", texture->width, texture->height);
+                    ImGui::PopID();
+                }
+
+                ImGui::EndTable();
+            }
+
+            if (visible_count == 0)
+            {
+                ImGui::TextDisabled("No textures match the current search.");
+            }
+            ImGui::EndChild();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    return changed;
+}
+
+bool draw_texture_preview_row(const char *label, const char *popup_id, uint32_t &texture_handle)
+{
+    bool changed = false;
+
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(label);
+
+    ImGui::TableSetColumnIndex(1);
+    ImGui::PushID(label);
+
+    const ash::resource_texture *texture = ash::rm_get_texture(texture_handle);
+    if (texture == nullptr || texture->srv_descriptor_index == ash::rhi_invalid_descriptor_index)
+    {
+        ImGui::TextDisabled(ICON_MS_BROKEN_IMAGE " Unassigned");
+    }
+    else
+    {
+        const D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle =
+            ash::rhi_get_cbv_srv_uav_gpu_descriptor(texture->srv_descriptor_index);
+
+        constexpr float preview_size = 72.0f;
+        ImGui::Image((ImTextureID)(intptr_t)gpu_handle.ptr, ImVec2(preview_size, preview_size));
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        ImGui::TextDisabled("Handle: %u", texture_handle);
+        ImGui::TextDisabled("%ux%u", texture->width, texture->height);
+        ImGui::EndGroup();
+    }
+
+    if (ImGui::Button("Select Texture"))
+    {
+        ImGui::OpenPopup(popup_id);
+    }
+    changed |= draw_texture_selector_popup(popup_id, texture_handle);
+
+    ImGui::PopID();
+    return changed;
+}
+
+void draw_material_component(flecs::entity entity)
+{
+    if (!entity.has<ash::material>())
+    {
+        return;
+    }
+
+    ash::material material_value = entity.get<ash::material>();
+    bool changed = false;
+
+    ImGui::PushID(static_cast<int>(entity.id()));
+
+    ImGuiTreeNodeFlags header_flags = ImGuiTreeNodeFlags_DefaultOpen;
+    if (ImGui::CollapsingHeader(ICON_MS_PALETTE " Material", header_flags))
+    {
+        ImGuiTableFlags table_flags = ImGuiTableFlags_SizingFixedFit;
+        if (ImGui::BeginTable("MaterialTable", 2, table_flags))
+        {
+            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+            changed |= draw_texture_preview_row(ICON_MS_TEXTURE " Albedo", "AlbedoTextureSelectorPopup",
+                                                material_value.albedo);
+            changed |= draw_texture_preview_row(ICON_MS_TEXTURE " Normal", "NormalTextureSelectorPopup",
+                                                material_value.normal);
+
+            ImGui::EndTable();
+        }
+    }
+
+    if (changed)
+    {
+        entity.set<ash::material>(material_value);
+    }
+
+    ImGui::PopID();
+}
 } // namespace
 
 void ash::ed_inspector_init()
@@ -215,6 +483,8 @@ void ash::ed_inspector_render()
 
     draw_name_field(scene_g_selected);
     draw_transform_component(scene_g_selected);
+    draw_mesh_component(scene_g_selected);
+    draw_material_component(scene_g_selected);
 
     ImGui::End();
 }
